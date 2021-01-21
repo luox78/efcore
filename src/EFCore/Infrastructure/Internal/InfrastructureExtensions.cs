@@ -6,6 +6,9 @@ using System.Linq;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using CA = System.Diagnostics.CodeAnalysis;
+
+#nullable enable
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.EntityFrameworkCore.Infrastructure.Internal
@@ -24,9 +27,12 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public static TService GetService<TService>([CanBeNull] IInfrastructure<IServiceProvider> accessor)
+        // TODO-NULLABLE: Do we really want this to accept (and return) null?
+        [return: CA.NotNullIfNotNull("accessor")]
+        public static TService? GetService<TService>([CanBeNull] IInfrastructure<IServiceProvider>? accessor)
+            where TService : class
         {
-            object service = null;
+            object? service = null;
 
             if (accessor != null)
             {
@@ -45,7 +51,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure.Internal
                 }
             }
 
-            return (TService)service;
+            return (TService?)service;
         }
     }
 }

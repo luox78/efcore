@@ -39,7 +39,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.HiLoSequenceName);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
@@ -105,7 +105,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.HiLoSequenceSchema);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
@@ -336,7 +336,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.ValueGenerationStrategy);
             if (annotation != null)
             {
-                return (SqlServerValueGenerationStrategy)annotation.Value;
+                return (SqlServerValueGenerationStrategy)annotation.Value!;
             }
 
             if (property.ValueGenerated != ValueGenerated.OnAdd
@@ -369,7 +369,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.ValueGenerationStrategy);
             if (annotation != null)
             {
-                return (SqlServerValueGenerationStrategy)annotation.Value;
+                return (SqlServerValueGenerationStrategy)annotation.Value!;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);

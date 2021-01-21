@@ -77,7 +77,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 // ReSharper disable once AssignNullToNotNullAttribute
                 throw new ArgumentException(
                     RelationalStrings.DbFunctionInvalidInstanceType(
-                        methodInfo.DisplayName(), methodInfo.DeclaringType.ShortDisplayName()));
+                        methodInfo.DisplayName(), methodInfo.DeclaringType!.ShortDisplayName()));
             }
 
             MethodInfo = methodInfo;

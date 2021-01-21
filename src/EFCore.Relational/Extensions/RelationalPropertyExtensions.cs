@@ -87,7 +87,7 @@ namespace Microsoft.EntityFrameworkCore
             var columnAnnotation = property.FindAnnotation(RelationalAnnotationNames.ColumnName);
             if (columnAnnotation != null)
             {
-                return (string)columnAnnotation.Value;
+                return (string?)columnAnnotation.Value;
             }
 
             return GetDefaultColumnName(property, storeObject);
@@ -304,7 +304,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(RelationalAnnotationNames.ColumnType);
             if (annotation != null)
             {
-                return property.FindRelationalTypeMapping()?.StoreType ?? (string)annotation.Value;
+                return property.FindRelationalTypeMapping()?.StoreType ?? (string?)annotation.Value;
             }
 
             return GetDefaultColumnType(property, storeObject);
@@ -475,7 +475,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(RelationalAnnotationNames.DefaultValueSql);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
@@ -544,7 +544,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(RelationalAnnotationNames.ComputedColumnSql);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
@@ -992,7 +992,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(RelationalAnnotationNames.Comment);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
@@ -1057,7 +1057,7 @@ namespace Microsoft.EntityFrameworkCore
             var annotation = property.FindAnnotation(RelationalAnnotationNames.Collation);
             if (annotation != null)
             {
-                return (string)annotation.Value;
+                return (string?)annotation.Value;
             }
 
             var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);

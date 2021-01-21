@@ -6,6 +6,8 @@ using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Utilities;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Infrastructure
 {
     /// <summary>
@@ -39,7 +41,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
 
             foreach (var serviceProperty in serviceProperties)
             {
-                ((ILazyLoader)serviceProperty.GetGetter().GetClrValue(entity))?.SetLoaded(entity, navigation.Name);
+                ((ILazyLoader?)serviceProperty.GetGetter().GetClrValue(entity))?.SetLoaded(entity, navigation.Name);
             }
         }
     }
