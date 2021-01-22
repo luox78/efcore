@@ -5,6 +5,8 @@ using System;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Diagnostics
 {
     /// <summary>
@@ -34,6 +36,6 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// <summary>
         ///     Reflects the option set by <see cref="DbContextOptionsBuilder.ConfigureWarnings" />.
         /// </summary>
-        WarningsConfiguration WarningsConfiguration { get; }
+        WarningsConfiguration? WarningsConfiguration { get; }
     }
 }

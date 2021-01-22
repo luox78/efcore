@@ -8,6 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 
+#nullable enable
+
 namespace Microsoft.EntityFrameworkCore.Diagnostics
 {
     /// <summary>
@@ -79,7 +81,8 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         DbTransaction TransactionStarted(
             [NotNull] DbConnection connection,
             [NotNull] TransactionEndEventData eventData,
-            [CanBeNull] DbTransaction result);
+            // TODO-NULLABLE: Changing to non-null - returning null from here would make us throw later when constructing RelationalTransaction
+            [NotNull] DbTransaction result);
 
         /// <summary>
         ///     Called just before EF intends to call
@@ -136,7 +139,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         ValueTask<DbTransaction> TransactionStartedAsync(
             [NotNull] DbConnection connection,
             [NotNull] TransactionEndEventData eventData,
-            [CanBeNull] DbTransaction result,
+            [NotNull] DbTransaction result,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -158,7 +161,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         DbTransaction TransactionUsed(
             [NotNull] DbConnection connection,
             [NotNull] TransactionEventData eventData,
-            [CanBeNull] DbTransaction result);
+            [NotNull] DbTransaction result);
 
         /// <summary>
         ///     <para>
@@ -182,7 +185,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         ValueTask<DbTransaction> TransactionUsedAsync(
             [NotNull] DbConnection connection,
             [NotNull] TransactionEventData eventData,
-            [CanBeNull] DbTransaction result,
+            [NotNull] DbTransaction result,
             CancellationToken cancellationToken = default);
 
         /// <summary>

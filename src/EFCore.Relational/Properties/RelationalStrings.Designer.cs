@@ -721,12 +721,6 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 method);
 
         /// <summary>
-        ///     The 'Down' method for this migration has not been implemented. Both the 'Up' abd 'Down' methods must be implemented to support reverting migrations.
-        /// </summary>
-        public static string MigrationDownMissing
-            => GetString("MigrationDownMissing");
-
-        /// <summary>
         ///     The entity type '{entityType}' is mapped to the DbFunction named '{functionName}', but no DbFunction with that name was found in the model. Ensure that the entity type mapping is configured using the model name of a function in the model.
         /// </summary>
         public static string MappedFunctionNotFound([CanBeNull] object? entityType, [CanBeNull] object? functionName)
@@ -743,6 +737,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 methodName, entityType);
 
         /// <summary>
+        ///     The 'Down' method for this migration has not been implemented. Both the 'Up' abd 'Down' methods must be implemented to support reverting migrations.
+        /// </summary>
+        public static string MigrationDownMissing
+            => GetString("MigrationDownMissing");
+
+        /// <summary>
         ///     The migration '{migrationName}' was not found.
         /// </summary>
         public static string MigrationNotFound([CanBeNull] object? migrationName)
@@ -753,7 +753,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// <summary>
         ///     SQL generation for the operation '{operation}' is not supported by the current database provider. Database providers must implement the appropriate method in 'MigrationsSqlGenerator' to support this operation.
         /// </summary>
-        public static string MigrationSqlGenerationMissing([CanBeNull] object operation)
+        public static string MigrationSqlGenerationMissing([CanBeNull] object? operation)
             => string.Format(
                 GetString("MigrationSqlGenerationMissing", nameof(operation)),
                 operation);
@@ -2012,49 +2012,49 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics.Internal
         /// <summary>
         ///     The index named '{indexName}' on the entity type '{entityType}' specifies properties {indexProperties}, but none of these properties are mapped to a column in any table. This index will not be created in the database.
         /// </summary>
-        public static EventDefinition<string, string, string> LogNamedIndexAllPropertiesNotToMappedToAnyTable([NotNull] IDiagnosticsLogger logger)
+        public static EventDefinition<string?, string, string> LogNamedIndexAllPropertiesNotToMappedToAnyTable([NotNull] IDiagnosticsLogger logger)
         {
             var definition = ((RelationalLoggingDefinitions)logger.Definitions).LogNamedIndexAllPropertiesNotToMappedToAnyTable;
             if (definition == null)
             {
                 definition = LazyInitializer.EnsureInitialized<EventDefinitionBase>(
                     ref ((RelationalLoggingDefinitions)logger.Definitions).LogNamedIndexAllPropertiesNotToMappedToAnyTable,
-                    () => new EventDefinition<string, string, string>(
+                    () => new EventDefinition<string?, string, string>(
                         logger.Options,
                         RelationalEventId.AllIndexPropertiesNotToMappedToAnyTable,
                         LogLevel.Information,
                         "RelationalEventId.AllIndexPropertiesNotToMappedToAnyTable",
-                        level => LoggerMessage.Define<string, string, string>(
+                        level => LoggerMessage.Define<string?, string, string>(
                             level,
                             RelationalEventId.AllIndexPropertiesNotToMappedToAnyTable,
                             _resourceManager.GetString("LogNamedIndexAllPropertiesNotToMappedToAnyTable")!)));
             }
 
-            return (EventDefinition<string, string, string>)definition;
+            return (EventDefinition<string?, string, string>)definition;
         }
 
         /// <summary>
         ///     The index named '{indexName}' on the entity type '{entityType}' specifies properties {indexProperties}. Some properties are mapped to a column in a table, but the property '{propertyName}' is not. All of the properties must be mapped for the index to be created in the database.
         /// </summary>
-        public static EventDefinition<string, string, string, string> LogNamedIndexPropertiesBothMappedAndNotMappedToTable([NotNull] IDiagnosticsLogger logger)
+        public static EventDefinition<string?, string, string, string> LogNamedIndexPropertiesBothMappedAndNotMappedToTable([NotNull] IDiagnosticsLogger logger)
         {
             var definition = ((RelationalLoggingDefinitions)logger.Definitions).LogNamedIndexPropertiesBothMappedAndNotMappedToTable;
             if (definition == null)
             {
                 definition = LazyInitializer.EnsureInitialized<EventDefinitionBase>(
                     ref ((RelationalLoggingDefinitions)logger.Definitions).LogNamedIndexPropertiesBothMappedAndNotMappedToTable,
-                    () => new EventDefinition<string, string, string, string>(
+                    () => new EventDefinition<string?, string, string, string>(
                         logger.Options,
                         RelationalEventId.IndexPropertiesBothMappedAndNotMappedToTable,
                         LogLevel.Error,
                         "RelationalEventId.IndexPropertiesBothMappedAndNotMappedToTable",
-                        level => LoggerMessage.Define<string, string, string, string>(
+                        level => LoggerMessage.Define<string?, string, string, string>(
                             level,
                             RelationalEventId.IndexPropertiesBothMappedAndNotMappedToTable,
                             _resourceManager.GetString("LogNamedIndexPropertiesBothMappedAndNotMappedToTable")!)));
             }
 
-            return (EventDefinition<string, string, string, string>)definition;
+            return (EventDefinition<string?, string, string, string>)definition;
         }
 
         /// <summary>
