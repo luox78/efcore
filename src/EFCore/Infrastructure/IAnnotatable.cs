@@ -104,7 +104,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// </returns>
         TValue GetOrAddRuntimeAnnotationValue<TValue, TArg>(
             [NotNull] string name,
-            [NotNull] Func<TArg, TValue> valueFactory,
-            [CanBeNull] TArg factoryArgument);
+            [NotNull] Func<TArg?, TValue> valueFactory,
+            [CanBeNull] TArg? factoryArgument);
     }
 }

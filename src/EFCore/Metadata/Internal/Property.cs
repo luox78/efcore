@@ -507,15 +507,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public virtual CoreTypeMapping? TypeMapping
         {
             get
-            {
-                if (_typeMapping == null
-                    && IsReadOnly)
-                {
-                    _typeMapping = ((IModel)DeclaringEntityType.Model).ModelDependencies?.TypeMappingSource.FindMapping(this);
-                }
-
-                return _typeMapping;
-            }
+                => _typeMapping == null && IsReadOnly
+                    ? _typeMapping ??= ((IModel)DeclaringEntityType.Model).ModelDependencies?.TypeMappingSource.FindMapping(this)
+                    : _typeMapping;
 
             [param: NotNull]
             set => SetTypeMapping(value, ConfigurationSource.Explicit);

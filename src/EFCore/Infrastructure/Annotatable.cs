@@ -315,8 +315,8 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// </returns>
         public virtual TValue GetOrAddRuntimeAnnotationValue<TValue, TArg>(
             string name,
-            Func<TArg, TValue> valueFactory,
-            TArg factoryArgument)
+            Func<TArg?, TValue> valueFactory,
+            TArg? factoryArgument)
             => (TValue)GetOrCreateRuntimeAnnotations().GetOrAdd(
                 name,
                 static (n, t) => t.Annotatable.CreateRuntimeAnnotation(n, t.CreateValue(t.Argument)),

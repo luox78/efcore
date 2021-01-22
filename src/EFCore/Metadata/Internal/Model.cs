@@ -57,6 +57,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         private ChangeTrackingStrategy? _changeTrackingStrategy;
 
         private ConfigurationSource? _changeTrackingStrategyConfigurationSource;
+        private ModelDependencies? _scopedModelDependencies;
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -96,7 +97,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         /// </summary>
         public virtual ConventionDispatcher ConventionDispatcher
         {
-            [DebuggerStepThrough] get => _conventionDispatcher ?? throw new InvalidOperationException(CoreStrings.ModelReadOnly);
+            [DebuggerStepThrough]
+            get => _conventionDispatcher ?? throw new InvalidOperationException(CoreStrings.ModelReadOnly);
         }
 
         /// <summary>
@@ -106,7 +108,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         [CA.DisallowNull]
-        public virtual ModelDependencies? ScopedModelDependencies { get; [param: NotNull] set; }
+        public virtual ModelDependencies? ScopedModelDependencies
+        {
+            get => _scopedModelDependencies;
+            [param: NotNull]
+            set => _scopedModelDependencies = value;
+        }
 
         /// <summary>
         ///     Indicates whether the model is read-only.
@@ -117,14 +124,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     Indicates whether the model is read-only.
         /// </summary>
         public virtual bool IsModelReadOnly => _conventionDispatcher == null;
-
-        /// <summary>
-        ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-        ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-        ///     any release. You should only use it directly in your code with extreme caution and knowing that
-        ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-        /// </summary>
-        public virtual bool IsValidated { get; set; }
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -877,7 +876,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public virtual T Track<T>([NotNull] Func<T> func, [CanBeNull] [CA.DisallowNull] ref IConventionForeignKey? foreignKey)
+        public virtual T Track<T>([NotNull] Func<T> func, [CanBeNull][CA.DisallowNull] ref IConventionForeignKey? foreignKey)
         {
             EnsureMutable();
             return ConventionDispatcher.Track(func, ref foreignKey);
@@ -913,7 +912,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         {
             // ConventionDispatcher should never be accessed once the model is made read-only.
             _conventionDispatcher = null;
-            ScopedModelDependencies = null!;
+            _scopedModelDependencies = null;
             return this;
         }
 

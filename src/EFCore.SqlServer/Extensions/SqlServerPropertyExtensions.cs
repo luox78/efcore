@@ -372,7 +372,7 @@ namespace Microsoft.EntityFrameworkCore
         internal static SqlServerValueGenerationStrategy GetValueGenerationStrategy(
             [NotNull] this IProperty property,
             in StoreObjectIdentifier storeObject,
-            ITypeMappingSource typeMappingSource)
+            ITypeMappingSource? typeMappingSource)
         {
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.ValueGenerationStrategy);
             if (annotation != null)
@@ -421,7 +421,7 @@ namespace Microsoft.EntityFrameworkCore
         private static SqlServerValueGenerationStrategy GetDefaultValueGenerationStrategy(
             IProperty property,
             in StoreObjectIdentifier storeObject,
-            ITypeMappingSource typeMappingSource)
+            ITypeMappingSource? typeMappingSource)
         {
             var modelStrategy = property.DeclaringEntityType.Model.GetValueGenerationStrategy();
 
@@ -522,7 +522,7 @@ namespace Microsoft.EntityFrameworkCore
         private static bool IsCompatibleWithValueGeneration(
             [NotNull] IProperty property,
             in StoreObjectIdentifier storeObject,
-            ITypeMappingSource typeMappingSource)
+            ITypeMappingSource? typeMappingSource)
         {
             var type = property.ClrType;
 
