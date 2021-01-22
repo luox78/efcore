@@ -2,11 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Utilities;
 
@@ -26,7 +29,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
     public class Annotatable : IMutableAnnotatable
     {
         private SortedDictionary<string, Annotation>? _annotations;
-        private SortedDictionary<string, Annotation>? _runtimeAnnotations;
+        private ConcurrentDictionary<string, Annotation>? _runtimeAnnotations;
 
         /// <summary>
         ///     <para>Indicates whether the current object is read-only.</para>
@@ -239,7 +242,9 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         ///     Gets all runtime annotations on the current object.
         /// </summary>
         public virtual IEnumerable<Annotation> GetRuntimeAnnotations()
-            => _runtimeAnnotations?.Values ?? Enumerable.Empty<Annotation>();
+            => _runtimeAnnotations == null
+            ? Enumerable.Empty<Annotation>()
+            : _runtimeAnnotations.OrderBy(p => p.Key).Select(p => p.Value);
 
         /// <summary>
         ///     Adds a runtime annotation to this object. Throws if an annotation with the specified name already exists.
@@ -263,16 +268,9 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// <param name="annotation"> The annotation to be added. </param>
         /// <returns> The added annotation. </returns>
         protected virtual Annotation AddRuntimeAnnotation([NotNull] string name, [NotNull] Annotation annotation)
-        {
-            if (FindRuntimeAnnotation(name) != null)
-            {
-                throw new InvalidOperationException(CoreStrings.DuplicateAnnotation(name, ToString()));
-            }
-
-            SetRuntimeAnnotation(name, annotation, oldAnnotation: null);
-
-            return annotation;
-        }
+            => GetOrCreateRuntimeAnnotations().TryAdd(name, annotation)
+                ? annotation
+                : throw new InvalidOperationException(CoreStrings.DuplicateAnnotation(name, ToString()));
 
         /// <summary>
         ///     Sets the runtime annotation stored under the given key. Overwrites the existing annotation if an
@@ -281,16 +279,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// <param name="name"> The key of the annotation to be added. </param>
         /// <param name="value"> The value to be stored in the annotation. </param>
         public virtual Annotation SetRuntimeAnnotation([NotNull] string name, [CanBeNull] object? value)
-        {
-            var oldAnnotation = FindRuntimeAnnotation(name);
-            if (oldAnnotation != null
-                && Equals(oldAnnotation.Value, value))
-            {
-                return oldAnnotation;
-            }
-
-            return SetRuntimeAnnotation(name, CreateRuntimeAnnotation(name, value), oldAnnotation);
-        }
+            => GetOrCreateRuntimeAnnotations().AddOrUpdate(name,
+                static (n, a) => a.Annotatable.CreateRuntimeAnnotation(n, a.Value),
+                static (n, oldAnnotation, a) =>
+                    !Equals(oldAnnotation.Value, a.Value) ? a.Annotatable.CreateRuntimeAnnotation(n, a.Value) : oldAnnotation,
+                (Value: value, Annotatable: this));
 
         /// <summary>
         ///     Sets the runtime annotation stored under the given key. Overwrites the existing annotation if an
@@ -305,17 +298,29 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             [NotNull] Annotation annotation,
             [CanBeNull] Annotation? oldAnnotation)
         {
-            EnsureReadOnly();
-
-            if (_runtimeAnnotations == null)
-            {
-                _runtimeAnnotations = new SortedDictionary<string, Annotation>();
-            }
-
-            _runtimeAnnotations[name] = annotation;
+            GetOrCreateRuntimeAnnotations()[name] = annotation;
 
             return annotation;
         }
+
+        /// <summary>
+        ///     Gets the value of the runtime annotation with the given name, adding it if one does not exist.
+        /// </summary>
+        /// <param name="name"> The name of the annotation. </param>
+        /// <param name="valueFactory"> The factory used to create the value if the annotation doesn't exist. </param>
+        /// <param name="factoryArgument"> An argument for the factory method. </param>
+        /// <returns>
+        ///     The value of the existing runtime annotation if an annotation with the specified name already exists.
+        ///     Otherwise a newly created value.
+        /// </returns>
+        public virtual TValue GetOrAddRuntimeAnnotationValue<TValue, TArg>(
+            string name,
+            Func<TArg, TValue> valueFactory,
+            TArg factoryArgument)
+            => (TValue)GetOrCreateRuntimeAnnotations().GetOrAdd(
+                name,
+                static (n, t) => t.Annotatable.CreateRuntimeAnnotation(n, t.CreateValue(t.Argument)),
+                (CreateValue: valueFactory, Argument: factoryArgument, Annotatable: this)).Value;
 
         /// <summary>
         ///     Gets the runtime annotation with the given name, returning <see langword="null" /> if it does not exist.
@@ -345,13 +350,12 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             Check.NotNull(name, nameof(name));
             EnsureReadOnly();
 
-            var annotation = FindRuntimeAnnotation(name);
-            if (annotation == null)
+            if (_runtimeAnnotations == null)
             {
                 return null;
             }
 
-            _runtimeAnnotations!.Remove(name);
+            _runtimeAnnotations.Remove(name, out var annotation);
 
             return annotation;
         }
@@ -364,6 +368,14 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         /// <returns> The newly created annotation. </returns>
         protected virtual Annotation CreateRuntimeAnnotation([NotNull] string name, [CanBeNull] object? value)
             => new Annotation(name, value);
+
+        private ConcurrentDictionary<string, Annotation> GetOrCreateRuntimeAnnotations()
+        {
+            EnsureReadOnly();
+
+            return NonCapturingLazyInitializer.EnsureInitialized(
+                        ref _runtimeAnnotations, (object?)null, static _ => new ConcurrentDictionary<string, Annotation>());
+        }
 
         /// <inheritdoc />
         [DebuggerStepThrough]

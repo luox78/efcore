@@ -73,7 +73,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 return false;
             }
 
-            SetRuntimeAnnotation(CoreAnnotationNames.ModelDependencies, modelDependencies);
+            AddRuntimeAnnotation(CoreAnnotationNames.ModelDependencies, modelDependencies);
 
             return true;
         }
