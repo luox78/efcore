@@ -7,12 +7,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using JetBrains.Annotations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Utilities;
 using Microsoft.Extensions.DependencyInjection;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Storage
 {
@@ -37,7 +36,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
         ///     Initializes a new instance of the <see cref="RelationalDatabaseCreator" /> class.
         /// </summary>
         /// <param name="dependencies"> Parameter object containing dependencies for this service. </param>
-        protected RelationalDatabaseCreator([NotNull] RelationalDatabaseCreatorDependencies dependencies)
+        protected RelationalDatabaseCreator(RelationalDatabaseCreatorDependencies dependencies)
         {
             Check.NotNull(dependencies, nameof(dependencies));
 
@@ -146,8 +145,13 @@ namespace Microsoft.EntityFrameworkCore.Storage
         /// <returns> The generated commands. </returns>
         protected virtual IReadOnlyList<MigrationCommand> GetCreateTablesCommands(
             MigrationsSqlGenerationOptions options = MigrationsSqlGenerationOptions.Default)
-            => Dependencies.MigrationsSqlGenerator.Generate(
-                Dependencies.ModelDiffer.GetDifferences(null, Dependencies.Model.GetRelationalModel()), Dependencies.Model, options);
+        {
+            var model = Dependencies.CurrentContext.Context.GetService<IDesignTimeModel>().Model;
+            return Dependencies.MigrationsSqlGenerator.Generate(
+                Dependencies.ModelDiffer.GetDifferences(null, model.GetRelationalModel()),
+                model,
+                options);
+        }
 
         /// <summary>
         ///     Determines whether the database contains any tables. No attempt is made to determine if

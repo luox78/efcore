@@ -18,14 +18,6 @@ namespace Microsoft.EntityFrameworkCore.Query
         {
         }
 
-        public override async Task SelectMany_with_navigation_and_Distinct(bool async)
-        {
-            var message = (await Assert.ThrowsAsync<InvalidOperationException>(
-                () => base.SelectMany_with_navigation_and_Distinct(async))).Message;
-
-            Assert.Equal(RelationalStrings.InsufficientInformationToIdentifyOuterElementOfCollectionJoin, message);
-        }
-
         public override async Task Filtered_include_after_different_filtered_include_different_level(bool async)
             => Assert.Equal(
                 SqliteStrings.ApplyNotSupported,
@@ -92,5 +84,17 @@ namespace Microsoft.EntityFrameworkCore.Query
                 SqliteStrings.ApplyNotSupported,
                 (await Assert.ThrowsAsync<InvalidOperationException>(
                     () => base.Filtered_include_same_filter_set_on_same_navigation_twice_followed_by_ThenIncludes_split(async))).Message);
+
+        public override async Task Take_Select_collection_Take(bool async)
+            => Assert.Equal(
+                SqliteStrings.ApplyNotSupported,
+                (await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => base.Take_Select_collection_Take(async))).Message);
+
+        public override async Task Skip_Take_Select_collection_Skip_Take(bool async)
+            => Assert.Equal(
+                SqliteStrings.ApplyNotSupported,
+                (await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => base.Skip_Take_Select_collection_Skip_Take(async))).Message);
     }
 }

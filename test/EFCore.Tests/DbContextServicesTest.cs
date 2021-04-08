@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.InMemory.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
 using Microsoft.EntityFrameworkCore.InMemory.ValueGeneration.Internal;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -412,6 +413,18 @@ namespace Microsoft.EntityFrameworkCore
             public void StateChanged(InternalEntityEntry entry, EntityState oldState, bool fromQuery)
                 => throw new NotImplementedException();
 
+            public void BeginAttachGraph()
+            {
+            }
+
+            public void CompleteAttachGraph()
+            {
+            }
+
+            public void AbortAttachGraph()
+            {
+            }
+
             public void NavigationReferenceChanged(
                 InternalEntityEntry entry,
                 INavigationBase navigationBase,
@@ -656,6 +669,12 @@ namespace Microsoft.EntityFrameworkCore
                 DbContext context,
                 IConventionSetBuilder conventionSetBuilder,
                 ModelDependencies modelDependencies)
+                => new Model();
+
+            public IModel GetModel(
+                DbContext context,
+                ModelCreationDependencies modelCreationDependencies,
+                bool designTime)
                 => new Model();
         }
 
@@ -2702,6 +2721,9 @@ namespace Microsoft.EntityFrameworkCore
 
             public ParameterBinding Bind(IConventionEntityType entityType, Type parameterType, string parameterName)
                 => throw new NotImplementedException();
+
+            public ParameterBinding Bind(IReadOnlyEntityType entityType, Type parameterType, string parameterName)
+                => throw new NotImplementedException();
         }
 
         private class CustomParameterBindingFactory2 : IParameterBindingFactory
@@ -2713,6 +2735,9 @@ namespace Microsoft.EntityFrameworkCore
                 => throw new NotImplementedException();
 
             public ParameterBinding Bind(IConventionEntityType entityType, Type parameterType, string parameterName)
+                => throw new NotImplementedException();
+
+            public ParameterBinding Bind(IReadOnlyEntityType entityType, Type parameterType, string parameterName)
                 => throw new NotImplementedException();
         }
 
@@ -3669,5 +3694,26 @@ namespace Microsoft.EntityFrameworkCore
             {
             }
         }
+    }
+}
+
+namespace Microsoft.EntityFrameworkCore.DifferentNamespace
+{
+    internal class Category
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+
+        public List<Product> Products { get; set; }
+    }
+
+    internal class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Price { get; set; }
+
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
     }
 }

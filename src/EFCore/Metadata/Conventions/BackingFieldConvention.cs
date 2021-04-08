@@ -5,14 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 {
@@ -24,6 +21,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
     ///         * _[property name]
     ///         * m_[camel-cased property name]
     ///         * m_[property name]
+    ///         * [property name]_
     ///     </para>
     ///     <para>
     ///         The field type must be of a type that's assignable to or from the property type.
@@ -40,7 +38,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         ///     Creates a new instance of <see cref="BackingFieldConvention" />.
         /// </summary>
         /// <param name="dependencies"> Parameter object containing dependencies for this convention. </param>
-        public BackingFieldConvention([NotNull] ProviderConventionSetBuilderDependencies dependencies)
+        public BackingFieldConvention(ProviderConventionSetBuilderDependencies dependencies)
         {
             Dependencies = dependencies;
         }
@@ -92,7 +90,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     {
                         if (property.GetFieldName() == null)
                         {
-                            throw new InvalidOperationException((string)ambiguousField.Value);
+                            throw new InvalidOperationException((string?)ambiguousField.Value);
                         }
 
                         property.RemoveAnnotation(CoreAnnotationNames.AmbiguousField);
@@ -184,6 +182,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                 match = TryMatch(sortedFields, "_", "", propertyName, propertyBase, match, entityClrType, propertyName);
                 match = TryMatch(sortedFields, "m_", camelPrefix, camelizedSuffix, propertyBase, match, entityClrType, propertyName);
                 match = TryMatch(sortedFields, "m_", "", propertyName, propertyBase, match, entityClrType, propertyName);
+                match = TryMatch(sortedFields, "", camelPrefix + camelizedSuffix, "_", propertyBase, match, entityClrType, propertyName);
             }
 
             return match;

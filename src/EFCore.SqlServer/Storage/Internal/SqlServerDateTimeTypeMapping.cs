@@ -4,11 +4,8 @@
 using System;
 using System.Data;
 using System.Data.Common;
-using JetBrains.Annotations;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Storage;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
 {
@@ -45,13 +42,14 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         public SqlServerDateTimeTypeMapping(
-            [NotNull] string storeType,
-            DbType? dbType = null)
+            string storeType,
+            DbType? dbType = null,
+            StoreTypePostfix storeTypePostfix = StoreTypePostfix.Precision)
             : base(
                 new RelationalTypeMappingParameters(
                     new CoreTypeMappingParameters(typeof(DateTime)),
                     storeType,
-                    StoreTypePostfix.Precision,
+                    storeTypePostfix,
                     dbType))
         {
         }

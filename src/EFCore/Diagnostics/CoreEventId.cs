@@ -70,6 +70,8 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             InvalidIncludePathError,
             QueryCompilationStarting,
             NavigationBaseIncluded,
+            NavigationBaseIncludeIgnored,
+            DistinctAfterOrderByWithoutRowLimitingOperatorWarning,
 
             // Infrastructure events
             SensitiveDataLoggingEnabledWarning = CoreBaseId + 400,
@@ -252,6 +254,20 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
 
         /// <summary>
         ///     <para>
+        ///         A navigation base specific in Include in the query was ignored because it will be populated already due to fix-up.
+        ///     </para>
+        ///     <para>
+        ///         This event is in the <see cref="DbLoggerCategory.Query" /> category.
+        ///     </para>
+        ///     <para>
+        ///         This event uses the <see cref="NavigationBaseEventData" /> payload when used with a <see cref="DiagnosticSource" />.
+        ///     </para>
+        /// </summary>
+        public static readonly EventId NavigationBaseIncludeIgnored
+            = MakeQueryId(Id.NavigationBaseIncludeIgnored);
+
+        /// <summary>
+        ///     <para>
         ///         A query uses a row limiting operation (Skip/Take) without OrderBy which may lead to unpredictable results.
         ///     </para>
         ///     <para>
@@ -271,6 +287,18 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// </summary>
         public static readonly EventId FirstWithoutOrderByAndFilterWarning
             = MakeQueryId(Id.FirstWithoutOrderByAndFilterWarning);
+
+        /// <summary>
+        ///     <para>
+        ///         The query uses the 'Distinct' operator after applying an ordering. If there are any row limiting operation used before `Distinct` and after ordering then ordering will be used for it.
+        ///         Ordering(s) will be erased after `Distinct` and results afterwards would be unordered.
+        ///     </para>
+        ///     <para>
+        ///         This event is in the <see cref="DbLoggerCategory.Query" /> category.
+        ///     </para>
+        /// </summary>
+        public static readonly EventId DistinctAfterOrderByWithoutRowLimitingOperatorWarning
+            = MakeQueryId(Id.DistinctAfterOrderByWithoutRowLimitingOperatorWarning);
 
         private static readonly string _infraPrefix = DbLoggerCategory.Infrastructure.Name + ".";
 

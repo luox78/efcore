@@ -35,7 +35,17 @@ namespace Microsoft.EntityFrameworkCore
 
             using var context = new DbContext(optionsBuilder.Options);
             var ex = Assert.Throws<InvalidOperationException>(() => context.Set<Category>().Local);
+
             Assert.Equal(CoreStrings.InvalidSetType(nameof(Category)), ex.Message);
+        }
+
+        [ConditionalFact]
+        public void Set_throws_for_type_not_in_model_same_type_with_different_namespace()
+        {
+            using var context = new EarlyLearningCenter();
+            var ex = Assert.Throws<InvalidOperationException>(() => context.Set<Microsoft.EntityFrameworkCore.DifferentNamespace.Category>().Local);
+
+            Assert.Equal(CoreStrings.InvalidSetSameTypeWithDifferentNamespace(typeof(Microsoft.EntityFrameworkCore.DifferentNamespace.Category).DisplayName(), typeof(Category).DisplayName()), ex.Message);
         }
 
         [ConditionalFact]
@@ -98,14 +108,14 @@ namespace Microsoft.EntityFrameworkCore
         [ConditionalFact]
         public void Set_throws_for_shared_types()
         {
-            var model = new Model();
-            var question = model.AddEntityType("SharedQuestion", typeof(Question), ConfigurationSource.Explicit);
+            var modelBuilder = InMemoryTestHelpers.Instance.CreateConventionBuilder();
+            modelBuilder.Model.AddEntityType("SharedQuestion", typeof(Question));
 
             var optionsBuilder = new DbContextOptionsBuilder();
             optionsBuilder
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .UseInternalServiceProvider(InMemoryTestHelpers.Instance.CreateServiceProvider())
-                .UseModel(model.FinalizeModel());
+                .UseModel(modelBuilder.FinalizeModel());
             using var context = new DbContext(optionsBuilder.Options);
             var ex = Assert.Throws<InvalidOperationException>(() => context.Set<Question>().Local);
             Assert.Equal(CoreStrings.InvalidSetSharedType(typeof(Question).ShortDisplayName()), ex.Message);
@@ -118,14 +128,16 @@ namespace Microsoft.EntityFrameworkCore
                 .AddScoped<IStateManager, FakeStateManager>()
                 .AddScoped<IChangeDetector, FakeChangeDetector>();
 
-            var model = new ModelBuilder().Entity<User>().Metadata.Model;
+            var modelBuilder = InMemoryTestHelpers.Instance.CreateConventionBuilder();
+            modelBuilder.Entity<User>();
+
             var serviceProvider = InMemoryTestHelpers.Instance.CreateServiceProvider(services);
 
             using var context = new DbContext(
                 new DbContextOptionsBuilder()
                     .UseInternalServiceProvider(serviceProvider)
                     .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                    .UseModel(model.FinalizeModel())
+                    .UseModel(modelBuilder.FinalizeModel())
                     .Options);
             var changeDetector = (FakeChangeDetector)context.GetService<IChangeDetector>();
 
@@ -298,12 +310,12 @@ namespace Microsoft.EntityFrameworkCore
         [ConditionalFact]
         public void Context_will_use_explicit_model_if_set_in_config()
         {
-            IMutableModel model = new Model();
-            model.AddEntityType(typeof(TheGu));
+            var modelBuilder = InMemoryTestHelpers.Instance.CreateConventionBuilder();
+            modelBuilder.Entity<TheGu>();
 
             using var context = new EarlyLearningCenter(
                 InMemoryTestHelpers.Instance.CreateServiceProvider(),
-                new DbContextOptionsBuilder().UseModel(model.FinalizeModel()).Options);
+                new DbContextOptionsBuilder().UseModel(modelBuilder.FinalizeModel()).Options);
             Assert.Equal(
                 new[] { typeof(TheGu).FullName },
                 context.Model.GetEntityTypes().Select(e => e.Name).ToArray());
@@ -751,7 +763,7 @@ namespace Microsoft.EntityFrameworkCore
                 (await Assert.ThrowsAsync<ObjectDisposedException>(() => context.FindAsync(typeof(Random), 77).AsTask())).Message);
 
             var methodCount = typeof(DbContext).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly).Count();
-            var expectedMethodCount = 42 + 8;
+            var expectedMethodCount = 50;
             Assert.True(
                 methodCount == expectedMethodCount,
                 userMessage: $"Expected {expectedMethodCount} methods on DbContext but found {methodCount}. "
@@ -765,6 +777,10 @@ namespace Microsoft.EntityFrameworkCore
             Assert.StartsWith(
                 CoreStrings.ContextDisposed,
                 Assert.Throws<ObjectDisposedException>(() => context.Model).Message);
+
+            Assert.StartsWith(
+                CoreStrings.ContextDisposed,
+                Assert.Throws<ObjectDisposedException>(() => context.GetService<IDesignTimeModel>().Model).Message);
 
             var expectedProperties = new List<string>
             {

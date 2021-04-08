@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.TestUtilities;
@@ -22,9 +23,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             var modelBuilder = CreateConventionModelBuilder();
 
             Assert.Equal(
-                RelationalStrings.DatabaseModelMissing,
+                CoreStrings.ModelNotFinalized("GetRelationalModel"),
                 Assert.Throws<InvalidOperationException>(
-                    () => modelBuilder.Model.GetRelationalModel()).Message);
+                    () => ((IModel)modelBuilder.Model).GetRelationalModel()).Message);
         }
 
         [ConditionalTheory]
@@ -137,10 +138,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             Assert.Equal(3, specialCustomerTable.EntityTypeMappings.Count());
             Assert.True(specialCustomerTable.EntityTypeMappings.First().IsSharedTablePrincipal);
 
-            Assert.Equal(specialCustomerType.GetDiscriminatorProperty() == null ? 8 : 9, specialCustomerTable.Columns.Count());
+            Assert.Equal(specialCustomerType.FindDiscriminatorProperty() == null ? 8 : 9, specialCustomerTable.Columns.Count());
 
             var specialityColumn = specialCustomerTable.Columns.Single(c => c.Name == nameof(SpecialCustomer.Speciality));
-            Assert.Equal(specialCustomerType.GetDiscriminatorProperty() != null, specialityColumn.IsNullable);
+            Assert.Equal(specialCustomerType.FindDiscriminatorProperty() != null, specialityColumn.IsNullable);
         }
 
         private static void AssertViews(IRelationalModel model, Mapping mapping)
@@ -166,6 +167,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 {
                     nameof(Order.AlternateId),
                     nameof(Order.CustomerId),
+                    "Details_Active",
                     "Details_BillingAddress_City",
                     "Details_BillingAddress_Street",
                     "Details_ShippingAddress_City",
@@ -236,9 +238,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 var specialityColumn = specialCustomerView.Columns.Single(c => c.Name == nameof(SpecialCustomer.Speciality));
                 Assert.False(specialityColumn.IsNullable);
 
-                Assert.Null(customerType.GetDiscriminatorProperty());
+                Assert.Null(customerType.FindDiscriminatorProperty());
                 Assert.Null(customerType.GetDiscriminatorValue());
-                Assert.Null(specialCustomerType.GetDiscriminatorProperty());
+                Assert.Null(specialCustomerType.FindDiscriminatorProperty());
                 Assert.Null(specialCustomerType.GetDiscriminatorValue());
             }
             else
@@ -282,6 +284,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                     nameof(Order.Id),
                     nameof(Order.AlternateId),
                     nameof(Order.CustomerId),
+                    "Details_Active",
                     "Details_BillingAddress_City",
                     "Details_BillingAddress_Street",
                     "Details_ShippingAddress_City",
@@ -513,9 +516,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 Assert.Equal("IX_SpecialCustomer_AnotherRelatedCustomerId", anotherSpecialCustomerDbIndex.Name);
                 Assert.NotNull(anotherSpecialCustomerDbIndex.MappedIndexes.Single());
 
-                Assert.Null(customerType.GetDiscriminatorProperty());
+                Assert.Null(customerType.FindDiscriminatorProperty());
                 Assert.Null(customerType.GetDiscriminatorValue());
-                Assert.Null(specialCustomerType.GetDiscriminatorProperty());
+                Assert.Null(specialCustomerType.FindDiscriminatorProperty());
                 Assert.Null(specialCustomerType.GetDiscriminatorValue());
             }
             else
@@ -628,7 +631,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                     {
                         cb.ToTable("ExtraSpecialCustomer", "ExtraSpecialSchema");
                     }
-                });            
+                });
 
             modelBuilder.Entity<Order>(
                 ob =>
@@ -688,7 +691,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                     }
                 });
 
-            return modelBuilder.FinalizeModel().GetRelationalModel();
+            return Finalize(modelBuilder);
         }
 
         [ConditionalFact]
@@ -710,14 +713,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                     cb.Property(s => s.Speciality).IsRequired();
                 });
 
-            var model = modelBuilder.FinalizeModel().GetRelationalModel();
+            var model = Finalize(modelBuilder);
 
             Assert.Equal(2, model.Model.GetEntityTypes().Count());
             Assert.Empty(model.Tables);
             Assert.Single(model.Views);
 
             var customerType = model.Model.FindEntityType(typeof(Customer));
-            Assert.NotNull(customerType.GetDiscriminatorProperty());
+            Assert.NotNull(customerType.FindDiscriminatorProperty());
 
             var customerView = customerType.GetViewMappings().Single().View;
             Assert.Equal("CustomerView", customerView.Name);
@@ -754,7 +757,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                     cb.HasNoKey();
                 });
 
-            var model = modelBuilder.FinalizeModel().GetRelationalModel();
+            var model = Finalize(modelBuilder);
 
             Assert.Single(model.Model.GetEntityTypes());
             Assert.Single(model.Queries);
@@ -829,7 +832,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
                 typeof(RelationalModelTest).GetMethod(
                     nameof(GetOrdersForCustomer), BindingFlags.NonPublic | BindingFlags.Static));
 
-            var model = modelBuilder.FinalizeModel().GetRelationalModel();
+            var model = Finalize(modelBuilder);
 
             Assert.Single(model.Model.GetEntityTypes());
             Assert.Equal(2, model.Functions.Count());
@@ -901,8 +904,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             Assert.Same(tvfFunction, tvfDbFunction.StoreFunction);
             Assert.Same(model.Model.GetDbFunctions().Single(f => f.Parameters.Count() == 1), tvfDbFunction);
             Assert.Same(tvfFunction.Parameters.Single(), tvfDbFunction.Parameters.Single().StoreFunctionParameter);
-            Assert.Same(tvfDbFunction.Parameters.Single(), tvfFunction.Parameters.Single().DbFunctionParameters.Single());
+            Assert.Equal(tvfDbFunction.Parameters.Single().Name, tvfFunction.Parameters.Single().DbFunctionParameters.Single().Name);
         }
+
+        private static IRelationalModel Finalize(ModelBuilder modelBuilder)
+            => RelationalTestHelpers.Instance.Finalize(modelBuilder).GetRelationalModel();
 
         protected virtual ModelBuilder CreateConventionModelBuilder()
             => RelationalTestHelpers.Instance.CreateConventionBuilder();
@@ -967,6 +973,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             public int OrderId { get; set; }
             public Order Order { get; set; }
             public Guid AlternateId { get; set; }
+            public bool Active { get; set; }
 
             public DateTime OrderDate { get; set; }
             public DateDetails DateDetails { get; set; }

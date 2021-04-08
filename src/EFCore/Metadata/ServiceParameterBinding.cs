@@ -3,12 +3,9 @@
 
 using System;
 using System.Linq.Expressions;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Metadata
 {
@@ -27,15 +24,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </summary>
         /// <param name="parameterType"> The parameter CLR type. </param>
         /// <param name="serviceType"> The service or metadata CLR type. </param>
-        /// <param name="serviceProperty"> The associated <see cref="IServiceProperty" />, or null. </param>
+        /// <param name="serviceProperties"> The associated <see cref="IServiceProperty" /> instances, or null. </param>
         protected ServiceParameterBinding(
-            [NotNull] Type parameterType,
-            [NotNull] Type serviceType,
-            [CanBeNull] IPropertyBase? serviceProperty = null)
-            : base(
-                parameterType, serviceProperty != null
-                    ? new[] { serviceProperty }
-                    : Array.Empty<IPropertyBase>())
+            Type parameterType,
+            Type serviceType,
+            IPropertyBase[]? serviceProperties = null)
+            : base(parameterType, serviceProperties)
         {
             Check.NotNull(serviceType, nameof(serviceType));
 
@@ -66,8 +60,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// <param name="entityTypeExpression"> The expression representing the <see cref="IEntityType" /> constant. </param>
         /// <returns> The expression tree. </returns>
         public abstract Expression BindToParameter(
-            [NotNull] Expression materializationExpression,
-            [NotNull] Expression entityTypeExpression);
+            Expression materializationExpression,
+            Expression entityTypeExpression);
 
         /// <summary>
         ///     A delegate to set a CLR service property on an entity instance.

@@ -2151,6 +2151,18 @@ namespace Microsoft.EntityFrameworkCore.Query
 
         [ConditionalTheory]
         [MemberData(nameof(IsAsyncData))]
+        public virtual Task SelectMany_with_navigation_and_Distinct_projecting_columns_including_join_key(bool async)
+        {
+            return AssertQuery(
+                async,
+                ss => from l1 in ss.Set<Level1>().Include(l => l.OneToMany_Optional1)
+                      from l2 in l1.OneToMany_Optional1.Select(x => new { x.Id, x.Name, FK = EF.Property<int>(x, "OneToMany_Optional_Inverse2Id") }).Distinct()
+                      select l1,
+                elementAsserter: (e, a) => AssertInclude(e, a, new ExpectedInclude<Level1>(l1 => l1.OneToMany_Optional1)));
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
         public virtual Task SelectMany_with_navigation_filter_and_explicit_DefaultIfEmpty(bool async)
         {
             return AssertQuery(
@@ -3325,7 +3337,6 @@ namespace Microsoft.EntityFrameworkCore.Query
                     from l1 in ss.Set<Level1>()
                     where l1.Id < 3
                     select (from l3 in ss.Set<Level3>()
-                            orderby l3.Id
                             select l3).Distinct().OrderBy(l => l.Id).Skip(1).FirstOrDefault().Name);
         }
 
@@ -5685,7 +5696,6 @@ namespace Microsoft.EntityFrameworkCore.Query
                 ss => from l1 in ss.Set<Level1>()
                       where l1.Id < 3
                       select (from l3 in ss.Set<Level3>()
-                              orderby l3.Id
                               select l3).Distinct().Skip(1).OrderBy(e => e.Id).FirstOrDefault().Name);
         }
 
@@ -5698,7 +5708,6 @@ namespace Microsoft.EntityFrameworkCore.Query
                 ss => from l1 in ss.Set<Level1>()
                       where l1.Id < 3
                       select (from l3 in ss.Set<Level3>()
-                              orderby l3.Id
                               select l3).Distinct().Take(1).OrderBy(e => e.Id).FirstOrDefault().Name);
         }
 
@@ -6054,6 +6063,111 @@ namespace Microsoft.EntityFrameworkCore.Query
                           InheritanceDerived2Id = EF.Property<int?>(x, "InheritanceDerived2Id"),
                       },
                 elementSorter: e => e.Id);
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task SelectMany_DefaultIfEmpty_multiple_times_with_joins_projecting_a_collection(bool async)
+        {
+            return AssertQuery(
+                async,
+                ss => from l4 in ss.Set<Level1>().SelectMany(l1 => l1.OneToOne_Required_FK1.OneToOne_Optional_FK2.OneToMany_Required3.DefaultIfEmpty())
+                      join l2 in ss.Set<Level4>().SelectMany(l4 => l4.OneToOne_Required_FK_Inverse4.OneToOne_Optional_FK_Inverse3.OneToMany_Required_Self2.DefaultIfEmpty()) on l4.Id equals l2.Id
+                      join l3 in ss.Set<Level4>().SelectMany(l4 => l4.OneToOne_Required_FK_Inverse4.OneToOne_Required_FK_Inverse3.OneToMany_Required2.DefaultIfEmpty()) on l2.Id equals l3.Id into grouping
+                      from l3 in grouping.DefaultIfEmpty()
+                      where l4.OneToMany_Optional_Inverse4.Name != "Foo"
+                      orderby l2.OneToOne_Optional_FK2.Id
+                      select new { Entity = l4, Collection = l2.OneToMany_Optional_Self2.Where(e => e.Id != 42).ToList(), Property = l3.OneToOne_Optional_FK_Inverse3.OneToOne_Required_FK2.Name },
+                ss => from l4 in ss.Set<Level1>().SelectMany(l1 => l1.OneToOne_Required_FK1.OneToOne_Optional_FK2.OneToMany_Required3.DefaultIfEmpty())
+                      join l2 in ss.Set<Level4>().SelectMany(l4 => l4.OneToOne_Required_FK_Inverse4.OneToOne_Optional_FK_Inverse3.OneToMany_Required_Self2.DefaultIfEmpty()) on l4.Id equals l2.Id
+                      join l3 in ss.Set<Level4>().SelectMany(l4 => l4.OneToOne_Required_FK_Inverse4.OneToOne_Required_FK_Inverse3.OneToMany_Required2.DefaultIfEmpty()) on l2.Id equals l3.Id into grouping
+                      from l3 in grouping.DefaultIfEmpty()
+                      where l4.OneToMany_Optional_Inverse4.Name != "Foo"
+                      orderby l2.OneToOne_Optional_FK2.MaybeScalar(e => e.Id)
+                      select new { Entity = l4, Collection = l2.OneToMany_Optional_Self2.Where(e => e.Id != 42).ToList(), Property = l3.OneToOne_Optional_FK_Inverse3.OneToOne_Required_FK2.Name },
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    AssertEqual(e.Entity, a.Entity);
+                    AssertCollection(e.Collection, a.Collection);
+                    AssertEqual(e.Property, a.Property);
+                });
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task Take_Select_collection_Take(bool async)
+        {
+            return AssertQuery(
+                async,
+                ss => ss.Set<Level1>().OrderBy(l1 => l1.Id).Take(1)
+                    .Select(l1 => new
+                    {
+                        Id = l1.Id,
+                        Name = l1.Name,
+                        Level2s = l1.OneToMany_Required1.OrderBy(l2 => l2.Id).Take(3)
+                            .Select(l2 => new
+                            {
+                                Id = l2.Id,
+                                Name = l2.Name,
+                                Level1Id = EF.Property<int>(l2, "OneToMany_Required_Inverse2Id"),
+                                Level2Id = l2.Level1_Required_Id,
+                                Level2 = l2.OneToOne_Required_FK_Inverse2
+                            })
+                    }),
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.Id, a.Id);
+                    Assert.Equal(e.Name, a.Name);
+                    AssertCollection(e.Level2s, a.Level2s, ordered: true,
+                        elementAsserter: (ee, aa) =>
+                        {
+                            Assert.Equal(ee.Id, aa.Id);
+                            Assert.Equal(ee.Name, aa.Name);
+                            Assert.Equal(ee.Level1Id, aa.Level1Id);
+                            Assert.Equal(ee.Level2Id, aa.Level2Id);
+                            AssertEqual(ee.Level2, aa.Level2);
+                        });
+                });
+        }
+
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task Skip_Take_Select_collection_Skip_Take(bool async)
+        {
+            return AssertQuery(
+                async,
+                ss => ss.Set<Level1>().OrderBy(l1 => l1.Id).Skip(1).Take(1)
+                    .Select(l1 => new
+                    {
+                        Id = l1.Id,
+                        Name = l1.Name,
+                        Level2s = l1.OneToMany_Required1.OrderBy(l2 => l2.Id).Skip(1).Take(3)
+                            .Select(l2 => new
+                            {
+                                Id = l2.Id,
+                                Name = l2.Name,
+                                Level1Id = EF.Property<int>(l2, "OneToMany_Required_Inverse2Id"),
+                                Level2Id = l2.Level1_Required_Id,
+                                Level2 = l2.OneToOne_Required_FK_Inverse2
+                            })
+                    }),
+                assertOrder: true,
+                elementAsserter: (e, a) =>
+                {
+                    Assert.Equal(e.Id, a.Id);
+                    Assert.Equal(e.Name, a.Name);
+                    AssertCollection(e.Level2s, a.Level2s, ordered: true,
+                        elementAsserter: (ee, aa) =>
+                        {
+                            Assert.Equal(ee.Id, aa.Id);
+                            Assert.Equal(ee.Name, aa.Name);
+                            Assert.Equal(ee.Level1Id, aa.Level1Id);
+                            Assert.Equal(ee.Level2Id, aa.Level2Id);
+                            AssertEqual(ee.Level2, aa.Level2);
+                        });
+                });
         }
     }
 }

@@ -866,13 +866,8 @@ namespace Microsoft.EntityFrameworkCore.Storage
             {
             }
 
-            protected override RelationalDataReader CreateRelationalDataReader(
-                IRelationalConnection connection,
-                DbCommand command,
-                DbDataReader reader,
-                Guid commandId,
-                IDiagnosticsLogger<DbLoggerCategory.Database.Command> logger)
-                => throw new InvalidOperationException("Bang!");
+            protected override RelationalDataReader CreateRelationalDataReader()
+                => new ThrowingRelationalReader(this);
 
             public static IRelationalCommand Create(string commandText = "Command Text")
                 => new ReaderThrowingRelationalCommand(
@@ -882,6 +877,22 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             TestServiceFactory.Instance.Create<RelationalTypeMappingSourceDependencies>())),
                     commandText,
                     Array.Empty<IRelationalParameter>());
+
+            private class ThrowingRelationalReader : RelationalDataReader
+            {
+                public ThrowingRelationalReader(IRelationalCommand relationalCommand)
+                    : base(relationalCommand)
+                {
+                }
+
+                public override void Initialize(
+                    IRelationalConnection relationalConnection,
+                    DbCommand command,
+                    DbDataReader reader,
+                    Guid commandId,
+                    IDiagnosticsLogger<DbLoggerCategory.Database.Command> logger)
+                    => throw new InvalidOperationException("Bang!");
+            }
         }
 
         [ConditionalTheory]

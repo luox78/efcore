@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -33,7 +32,7 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         [EntityFrameworkInternal]
-        protected NavigationEntry([NotNull] InternalEntityEntry internalEntry, [NotNull] string name, bool collection)
+        protected NavigationEntry(InternalEntityEntry internalEntry, string name, bool collection)
             : this(internalEntry, GetNavigation(internalEntry, name, collection))
         {
         }
@@ -45,14 +44,14 @@ namespace Microsoft.EntityFrameworkCore.ChangeTracking
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         [EntityFrameworkInternal]
-        protected NavigationEntry([NotNull] InternalEntityEntry internalEntry, [NotNull] INavigationBase navigation)
+        protected NavigationEntry(InternalEntityEntry internalEntry, INavigationBase navigation)
             : base(internalEntry, navigation)
         {
         }
 
         private static INavigationBase GetNavigation(InternalEntityEntry internalEntry, string name, bool collection)
         {
-            var navigation = (INavigationBase)internalEntry.EntityType.FindNavigation(name)
+            var navigation = (INavigationBase?)internalEntry.EntityType.FindNavigation(name)
                 ?? internalEntry.EntityType.FindSkipNavigation(name);
 
             if (navigation == null)

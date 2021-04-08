@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Cosmos.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -16,6 +15,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
+
+#nullable disable
 
 namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
 {
@@ -58,10 +59,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         public CosmosSqlTranslatingExpressionVisitor(
-            [NotNull] QueryCompilationContext queryCompilationContext,
-            [NotNull] ISqlExpressionFactory sqlExpressionFactory,
-            [NotNull] IMemberTranslatorProvider memberTranslatorProvider,
-            [NotNull] IMethodCallTranslatorProvider methodCallTranslatorProvider)
+            QueryCompilationContext queryCompilationContext,
+            ISqlExpressionFactory sqlExpressionFactory,
+            IMemberTranslatorProvider memberTranslatorProvider,
+            IMethodCallTranslatorProvider methodCallTranslatorProvider)
         {
             _queryCompilationContext = queryCompilationContext;
             _model = queryCompilationContext.Model;
@@ -85,7 +86,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        protected virtual void AddTranslationErrorDetails([NotNull] string details)
+        protected virtual void AddTranslationErrorDetails(string details)
         {
             Check.NotNull(details, nameof(details));
 
@@ -105,7 +106,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public virtual SqlExpression Translate([NotNull] Expression expression)
+        public virtual SqlExpression Translate(Expression expression)
         {
             Check.NotNull(expression, nameof(expression));
 
@@ -633,7 +634,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                 if (derivedType != null
                     && TryBindMember(
                         entityReferenceExpression,
-                        MemberIdentity.Create(entityType.GetDiscriminatorProperty().Name)) is SqlExpression discriminatorColumn)
+                        MemberIdentity.Create(entityType.GetDiscriminatorPropertyName())) is SqlExpression discriminatorColumn)
                 {
                     var concreteEntityTypes = derivedType.GetConcreteDerivedTypesInclusive().ToList();
 

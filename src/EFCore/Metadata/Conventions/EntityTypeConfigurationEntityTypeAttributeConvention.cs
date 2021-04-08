@@ -4,7 +4,6 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -24,7 +23,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         ///     Creates a new instance of <see cref="EntityTypeConfigurationEntityTypeAttributeConvention" />.
         /// </summary>
         /// <param name="dependencies"> Parameter object containing dependencies for this convention. </param>
-        public EntityTypeConfigurationEntityTypeAttributeConvention([NotNull] ProviderConventionSetBuilderDependencies dependencies)
+        public EntityTypeConfigurationEntityTypeAttributeConvention(ProviderConventionSetBuilderDependencies dependencies)
             : base(dependencies)
         {
         }
@@ -58,7 +57,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             where TEntity : class
         {
             var entityTypeBuilder = new EntityTypeBuilder<TEntity>((IMutableEntityType)entityType);
-            var entityTypeConfiguration = (IEntityTypeConfiguration<TEntity>)Activator.CreateInstance(entityTypeConfigurationType);
+            var entityTypeConfiguration = (IEntityTypeConfiguration<TEntity>)Activator.CreateInstance(entityTypeConfigurationType)!;
             entityTypeConfiguration.Configure(entityTypeBuilder);
         }
     }

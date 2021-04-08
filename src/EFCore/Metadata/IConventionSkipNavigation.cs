@@ -3,10 +3,7 @@
 
 using System;
 using System.Diagnostics;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Metadata
 {
@@ -20,7 +17,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
     ///         Once the model is built, <see cref="ISkipNavigation" /> represents a read-only view of the same metadata.
     ///     </para>
     /// </summary>
-    public interface IConventionSkipNavigation : ISkipNavigation, IConventionNavigationBase
+    public interface IConventionSkipNavigation : IReadOnlySkipNavigation, IConventionNavigationBase
     {
         /// <summary>
         ///     Gets the builder that can be used to configure this property.
@@ -34,7 +31,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         new IConventionEntityType DeclaringEntityType
         {
             [DebuggerStepThrough]
-            get => (IConventionEntityType)((INavigationBase)this).DeclaringEntityType;
+            get => (IConventionEntityType)((IReadOnlyNavigationBase)this).DeclaringEntityType;
         }
 
         /// <summary>
@@ -43,7 +40,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         new IConventionEntityType TargetEntityType
         {
             [DebuggerStepThrough]
-            get => (IConventionEntityType)((INavigationBase)this).TargetEntityType;
+            get => (IConventionEntityType)((IReadOnlyNavigationBase)this).TargetEntityType;
         }
 
         /// <summary>
@@ -52,7 +49,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         new IConventionEntityType? JoinEntityType
         {
             [DebuggerStepThrough]
-            get => (IConventionEntityType?)((ISkipNavigation)this).JoinEntityType;
+            get => (IConventionEntityType?)((IReadOnlySkipNavigation)this).JoinEntityType;
         }
 
         /// <summary>
@@ -61,7 +58,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         new IConventionForeignKey? ForeignKey
         {
             [DebuggerStepThrough]
-            get => (IConventionForeignKey?)((ISkipNavigation)this).ForeignKey;
+            get => (IConventionForeignKey?)((IReadOnlySkipNavigation)this).ForeignKey;
         }
 
         /// <summary>
@@ -72,7 +69,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </param>
         /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
         /// <returns> The new foreign key. </returns>
-        IConventionForeignKey? SetForeignKey([CanBeNull] IConventionForeignKey? foreignKey, bool fromDataAnnotation = false);
+        IConventionForeignKey? SetForeignKey(IConventionForeignKey? foreignKey, bool fromDataAnnotation = false);
 
         /// <summary>
         ///     Returns the configuration source for <see cref="ForeignKey" />.
@@ -86,7 +83,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         new IConventionSkipNavigation? Inverse
         {
             [DebuggerStepThrough]
-            get => (IConventionSkipNavigation?)((ISkipNavigation)this).Inverse;
+            get => (IConventionSkipNavigation?)((IReadOnlySkipNavigation)this).Inverse;
         }
 
         /// <summary>
@@ -97,7 +94,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         /// </param>
         /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
         [DebuggerStepThrough]
-        IConventionSkipNavigation? SetInverse([CanBeNull] IConventionSkipNavigation? inverse, bool fromDataAnnotation = false);
+        IConventionSkipNavigation? SetInverse(IConventionSkipNavigation? inverse, bool fromDataAnnotation = false);
 
         /// <summary>
         ///     Returns the configuration source for <see cref="Inverse" />.

@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -17,10 +18,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
-using CA = System.Diagnostics.CodeAnalysis;
 using ExpressionExtensions = Microsoft.EntityFrameworkCore.Infrastructure.ExpressionExtensions;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
 {
@@ -84,8 +82,8 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         public InMemoryExpressionTranslatingExpressionVisitor(
-            [NotNull] QueryCompilationContext queryCompilationContext,
-            [NotNull] QueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor)
+            QueryCompilationContext queryCompilationContext,
+            QueryableMethodTranslatingExpressionVisitor queryableMethodTranslatingExpressionVisitor)
         {
             _queryCompilationContext = queryCompilationContext;
             _queryableMethodTranslatingExpressionVisitor = queryableMethodTranslatingExpressionVisitor;
@@ -107,7 +105,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        protected virtual void AddTranslationErrorDetails([NotNull] string details)
+        protected virtual void AddTranslationErrorDetails(string details)
         {
             Check.NotNull(details, nameof(details));
 
@@ -127,7 +125,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public virtual Expression? Translate([NotNull] Expression expression)
+        public virtual Expression? Translate(Expression expression)
         {
             Check.NotNull(expression, nameof(expression));
 
@@ -196,23 +194,20 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                 || binaryExpression.NodeType == ExpressionType.NotEqual)
             {
                 var property = FindProperty(newLeft) ?? FindProperty(newRight);
-                if (property != null)
+                var comparer = property?.GetValueComparer();
+
+                if (comparer != null
+                    && comparer.Type.IsAssignableFrom(newLeft.Type)
+                    && comparer.Type.IsAssignableFrom(newRight.Type))
                 {
-                    var comparer = property.GetValueComparer();
-
-                    if (comparer != null
-                        && comparer.Type.IsAssignableFrom(newLeft.Type)
-                        && comparer.Type.IsAssignableFrom(newRight.Type))
+                    if (binaryExpression.NodeType == ExpressionType.Equal)
                     {
-                        if (binaryExpression.NodeType == ExpressionType.Equal)
-                        {
-                            return comparer.ExtractEqualsBody(newLeft, newRight);
-                        }
+                        return comparer.ExtractEqualsBody(newLeft, newRight);
+                    }
 
-                        if (binaryExpression.NodeType == ExpressionType.NotEqual)
-                        {
-                            return Expression.IsFalse(comparer.ExtractEqualsBody(newLeft, newRight));
-                        }
+                    if (binaryExpression.NodeType == ExpressionType.NotEqual)
+                    {
+                        return Expression.IsFalse(comparer.ExtractEqualsBody(newLeft, newRight));
                     }
                 }
             }
@@ -281,11 +276,14 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                 case EntityShaperExpression entityShaperExpression:
                     return new EntityReferenceExpression(entityShaperExpression);
 
-                case ProjectionBindingExpression projectionBindingExpression:
-                    return projectionBindingExpression.ProjectionMember != null
-                        ? ((InMemoryQueryExpression)projectionBindingExpression.QueryExpression)
-                        .GetMappedProjection(projectionBindingExpression.ProjectionMember)
-                        : QueryCompilationContext.NotTranslatedExpression;
+                case ProjectionBindingExpression projectionBindingExpression
+                    when projectionBindingExpression.ProjectionMember != null:
+                    return ((InMemoryQueryExpression)projectionBindingExpression.QueryExpression)
+                        .GetMappedProjection(projectionBindingExpression.ProjectionMember);
+
+                //case ProjectionBindingExpression projectionBindingExpression
+                //    when projectionBindingExpression.Index is int index:
+                //    return ((InMemoryQueryExpression)projectionBindingExpression.QueryExpression).Projection[index];
 
                 case InMemoryGroupByShaperExpression inMemoryGroupByShaperExpression:
                     return new GroupingElementExpression(
@@ -336,6 +334,18 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             Check.NotNull(memberExpression, nameof(memberExpression));
 
             var innerExpression = Visit(memberExpression.Expression);
+
+            // when visiting unary we remove converts from nullable to non-nullable
+            // however if this happens for memberExpression.Expression we are unable to bind
+            if (innerExpression != null
+                && memberExpression.Expression != null
+                && innerExpression.Type != memberExpression.Expression.Type
+                && innerExpression.Type.IsNullableType()
+                && innerExpression.Type.UnwrapNullableType() == memberExpression.Expression.Type)
+            {
+                innerExpression = Expression.Convert(innerExpression, memberExpression.Expression.Type);
+            }
+
             if (memberExpression.Expression != null
                 && innerExpression == QueryCompilationContext.NotTranslatedExpression)
             {
@@ -638,13 +648,21 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                     {
                         var predicate = TranslateInternal(RemapLambda(groupingElement, lambdaExpression));
 
-                        return predicate == null
-                            ? null
-                            : groupingElement.UpdateSource(
-                                Expression.Call(
-                                    EnumerableMethods.Where.MakeGenericMethod(typeof(ValueBuffer)),
-                                    groupingElement.Source,
-                                    Expression.Lambda(predicate, groupingElement.ValueBufferParameter)));
+                        if (predicate == null)
+                        {
+                            return null;
+                        }
+
+                        if (predicate.Type != typeof(bool))
+                        {
+                            predicate = Expression.Equal(predicate, Expression.Constant(true, typeof(bool?)));
+                        }
+
+                        return groupingElement.UpdateSource(
+                            Expression.Call(
+                                EnumerableMethods.Where.MakeGenericMethod(typeof(ValueBuffer)),
+                                groupingElement.Source,
+                                Expression.Lambda(predicate, groupingElement.ValueBufferParameter)));
                     }
 
                     Expression? ApplySelect(GroupingElementExpression groupingElement)
@@ -1050,13 +1068,13 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                 if (derivedType != null)
                 {
                     // All hierarchies have discriminator property
-                    var discriminatorProperty = entityType.GetDiscriminatorProperty()!;
+                    var discriminatorProperty = entityType.FindDiscriminatorProperty()!;
                     var boundProperty = BindProperty(entityReferenceExpression, discriminatorProperty, discriminatorProperty.ClrType);
                     // KeyValueComparer is not null at runtime
-                    var valueComparer = discriminatorProperty.GetKeyValueComparer()!;
+                    var valueComparer = discriminatorProperty.GetKeyValueComparer();
 
                     var equals = valueComparer.ExtractEqualsBody(
-                        boundProperty,
+                        boundProperty!,
                         Expression.Constant(derivedType.GetDiscriminatorValue(), discriminatorProperty.ClrType));
 
                     foreach (var derivedDerivedType in derivedType.GetDerivedTypes())
@@ -1064,7 +1082,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                         equals = Expression.OrElse(
                             equals,
                             valueComparer.ExtractEqualsBody(
-                                boundProperty,
+                                boundProperty!,
                                 Expression.Constant(derivedDerivedType.GetDiscriminatorValue(), discriminatorProperty.ClrType)));
                     }
 
@@ -1176,15 +1194,12 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
 
                 // if the result type change was just nullability change e.g from int to int?
                 // we want to preserve the new type for null propagation
-                if (result.Type != type
+                return result.Type != type
                     && !(result.Type.IsNullableType()
                         && !type.IsNullableType()
-                        && result.Type.UnwrapNullableType() == type))
-                {
-                    result = Expression.Convert(result, type);
-                }
-
-                return result;
+                        && result.Type.UnwrapNullableType() == type)
+                    ? Expression.Convert(result, type)
+                    : (Expression)result;
             }
 
             if (entityReferenceExpression.SubqueryEntity != null)
@@ -1289,7 +1304,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             return null;
         }
 
-        private bool TryRewriteContainsEntity(Expression? source, Expression item, [CA.NotNullWhen(true)] out Expression? result)
+        private bool TryRewriteContainsEntity(Expression? source, Expression item, [NotNullWhen(true)] out Expression? result)
         {
             result = null;
 
@@ -1363,7 +1378,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         }
 
         private bool TryRewriteEntityEquality(
-            ExpressionType nodeType, Expression left, Expression right, bool equalsMethod, [CA.NotNullWhen(true)] out Expression? result)
+            ExpressionType nodeType, Expression left, Expression right, bool equalsMethod, [NotNullWhen(true)] out Expression? result)
         {
             var leftEntityReference = left as EntityReferenceExpression;
             var rightEntityReference = right as EntityReferenceExpression;
@@ -1499,16 +1514,13 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             }
         }
 
-#nullable disable
-        // Need unconstrainted nullable T
-        private static T ParameterValueExtractor<T>(QueryContext context, string baseParameterName, IProperty property)
+        private static T? ParameterValueExtractor<T>(QueryContext context, string baseParameterName, IProperty property)
         {
             var baseParameter = context.ParameterValues[baseParameterName];
-            return baseParameter == null ? (T)(object)null : (T)property.GetGetter().GetClrValue(baseParameter);
+            return baseParameter == null ? (T?)(object?)null : (T?)property.GetGetter().GetClrValue(baseParameter);
         }
 
-        // Need unconstrainted nullable TProperty
-        private static List<TProperty> ParameterListValueExtractor<TEntity, TProperty>(
+        private static List<TProperty?>? ParameterListValueExtractor<TEntity, TProperty>(
             QueryContext context,
             string baseParameterName,
             IProperty property)
@@ -1519,9 +1531,8 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             }
 
             var getter = property.GetGetter();
-            return baseListParameter.Select(e => e != null ? (TProperty)getter.GetClrValue(e) : (TProperty)(object)null).ToList();
+            return baseListParameter.Select(e => e != null ? (TProperty?)getter.GetClrValue(e) : (TProperty?)(object?)null).ToList();
         }
-#nullable enable
 
         private static ConstantExpression GetValue(Expression expression)
             => Expression.Constant(
@@ -1684,7 +1695,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
                 return _found;
             }
 
-            [return: CA.NotNullIfNotNull("expression")]
+            [return: NotNullIfNotNull("expression")]
             public override Expression? Visit(Expression? expression)
             {
                 if (_found)

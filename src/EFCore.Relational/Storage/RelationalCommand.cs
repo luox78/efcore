@@ -7,12 +7,9 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Storage
 {
@@ -27,6 +24,9 @@ namespace Microsoft.EntityFrameworkCore.Storage
     /// </summary>
     public class RelationalCommand : IRelationalCommand
     {
+        private readonly RelationalDataReader _relationalReader;
+        private readonly Stopwatch _stopwatch = new();
+
         /// <summary>
         ///     <para>
         ///         Constructs a new <see cref="RelationalCommand" />.
@@ -40,9 +40,9 @@ namespace Microsoft.EntityFrameworkCore.Storage
         /// <param name="commandText"> The text of the command to be executed. </param>
         /// <param name="parameters"> Parameters for the command. </param>
         public RelationalCommand(
-            [NotNull] RelationalCommandBuilderDependencies dependencies,
-            [NotNull] string commandText,
-            [NotNull] IReadOnlyList<IRelationalParameter> parameters)
+            RelationalCommandBuilderDependencies dependencies,
+            string commandText,
+            IReadOnlyList<IRelationalParameter> parameters)
         {
             Check.NotNull(dependencies, nameof(dependencies));
             Check.NotNull(commandText, nameof(commandText));
@@ -51,6 +51,8 @@ namespace Microsoft.EntityFrameworkCore.Storage
             Dependencies = dependencies;
             CommandText = commandText;
             Parameters = parameters;
+
+            _relationalReader = CreateRelationalDataReader();
         }
 
         /// <summary>
@@ -61,12 +63,12 @@ namespace Microsoft.EntityFrameworkCore.Storage
         /// <summary>
         ///     Gets the command text to be executed.
         /// </summary>
-        public virtual string CommandText { get; }
+        public virtual string CommandText { get; private set; }
 
         /// <summary>
         ///     Gets the parameters for the command.
         /// </summary>
-        public virtual IReadOnlyList<IRelationalParameter> Parameters { get; }
+        public virtual IReadOnlyList<IRelationalParameter> Parameters { get; private set; }
 
         /// <summary>
         ///     Executes the command with no results.
@@ -83,7 +85,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             connection.Open();
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
             try
             {
                 var interceptionResult = logger?.CommandNonQueryExecuting(
@@ -107,7 +109,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         connection.ConnectionId,
                         nonQueryResult,
                         startTime,
-                        stopwatch.Elapsed)
+                        _stopwatch.Elapsed)
                     ?? nonQueryResult;
             }
             catch (Exception exception)
@@ -121,7 +123,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    stopwatch.Elapsed);
+                    _stopwatch.Elapsed);
 
                 throw;
             }
@@ -170,7 +172,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
             try
             {
                 var interceptionResult = logger == null
@@ -199,7 +201,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             connection.ConnectionId,
                             result,
                             startTime,
-                            stopwatch.Elapsed,
+                            _stopwatch.Elapsed,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -219,7 +221,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            stopwatch.Elapsed,
+                            _stopwatch.Elapsed,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -247,7 +249,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             connection.Open();
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
             try
             {
                 var interceptionResult = logger?.CommandScalarExecuting(
@@ -271,7 +273,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         connection.ConnectionId,
                         result,
                         startTime,
-                        stopwatch.Elapsed)
+                        _stopwatch.Elapsed)
                     ?? result;
             }
             catch (Exception exception)
@@ -285,7 +287,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    stopwatch.Elapsed);
+                    _stopwatch.Elapsed);
 
                 throw;
             }
@@ -316,7 +318,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
 
             try
             {
@@ -346,7 +348,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         connection.ConnectionId,
                         result,
                         startTime,
-                        stopwatch.Elapsed,
+                        _stopwatch.Elapsed,
                         cancellationToken).ConfigureAwait(false);
                 }
 
@@ -365,7 +367,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            stopwatch.Elapsed,
+                            _stopwatch.Elapsed,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -397,7 +399,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             connection.Open();
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
 
             var readerOpen = false;
             DbDataReader reader;
@@ -426,7 +428,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         connection.ConnectionId,
                         reader,
                         startTime,
-                        stopwatch.Elapsed);
+                        _stopwatch.Elapsed);
                 }
             }
             catch (Exception exception)
@@ -440,7 +442,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                     connection.ConnectionId,
                     exception,
                     startTime,
-                    stopwatch.Elapsed);
+                    _stopwatch.Elapsed);
 
                 CleanupCommand(command, connection);
 
@@ -454,16 +456,11 @@ namespace Microsoft.EntityFrameworkCore.Storage
                     reader = new BufferedDataReader(reader, detailedErrorsEnabled).Initialize(readerColumns);
                 }
 
-                var result = CreateRelationalDataReader(
-                    connection,
-                    command,
-                    reader,
-                    commandId,
-                    logger);
+                _relationalReader.Initialize(parameterObject.Connection, command, reader, commandId, logger);
 
                 readerOpen = true;
 
-                return result;
+                return _relationalReader;
             }
             finally
             {
@@ -499,7 +496,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
 
             var readerOpen = false;
             DbDataReader reader;
@@ -531,7 +528,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             connection.ConnectionId,
                             reader,
                             startTime,
-                            stopwatch.Elapsed,
+                            _stopwatch.Elapsed,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -549,7 +546,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
                             connection.ConnectionId,
                             exception,
                             startTime,
-                            stopwatch.Elapsed,
+                            _stopwatch.Elapsed,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -567,17 +564,11 @@ namespace Microsoft.EntityFrameworkCore.Storage
                         .ConfigureAwait(false);
                 }
 
-                var result = CreateRelationalDataReader(
-                    connection,
-                    command,
-                    reader,
-                    commandId,
-                    logger);
+                _relationalReader.Initialize(parameterObject.Connection, command, reader, commandId, logger);
 
                 readerOpen = true;
 
-                return result;
-
+                return _relationalReader;
             }
             finally
             {
@@ -612,7 +603,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             var connectionId = connection.ConnectionId;
 
             var startTime = DateTimeOffset.UtcNow;
-            var stopwatch = Stopwatch.StartNew();
+            _stopwatch.Restart();
 
             var interceptionResult = logger?.CommandCreating(connection, commandMethod, context, commandId, connectionId, startTime)
                 ?? default;
@@ -624,7 +615,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             if (logger != null)
             {
                 command = logger.CommandCreated(
-                    connection, command, commandMethod, context, commandId, connectionId, startTime, stopwatch.Elapsed);
+                    connection, command, commandMethod, context, commandId, connectionId, startTime, _stopwatch.Elapsed);
             }
 
             command.CommandText = CommandText;
@@ -660,28 +651,27 @@ namespace Microsoft.EntityFrameworkCore.Storage
 
         /// <summary>
         ///     <para>
-        ///         Creates a new <see cref="RelationalDataReader" /> to be used by <see cref="ExecuteReader" /> and <see cref="ExecuteReaderAsync" />.
+        ///         Creates a new <see cref="RelationalDataReader" /> to be used by <see cref="ExecuteReader" /> and
+        ///         <see cref="ExecuteReaderAsync" />. The returned <see cref="RelationalDataReader" /> may get used more for multiple
+        ///         queries, and will be re-initialized each time via <see cref="RelationalDataReader.Initialize" />.
         ///     </para>
         ///     <para>
         ///         This method is typically used by database providers (and other extensions). It is generally
         ///         not used in application code.
         ///     </para>
         /// </summary>
-        /// <param name="connection">The connection, to pass to the <see cref="RelationalDataReader" /> constructor.</param>
-        /// <param name="command">The command that was executed, to pass to the <see cref="RelationalDataReader" /> constructor.</param>
-        /// <param name="reader">The underlying reader for the result set, to pass to the <see cref="RelationalDataReader" /> constructor.</param>
-        /// <param name="commandId">
-        ///     A correlation ID that identifies the <see cref="DbCommand" /> instance being used, to pass to the
-        ///     <see cref="RelationalDataReader" /> constructor.
-        /// </param>
-        /// <param name="logger">The diagnostic source, to pass to the <see cref="RelationalDataReader" /> constructor.</param>
         /// <returns>The created <see cref="RelationalDataReader" />.</returns>
-        protected virtual RelationalDataReader CreateRelationalDataReader(
-            [NotNull] IRelationalConnection connection,
-            [NotNull] DbCommand command,
-            [NotNull] DbDataReader reader,
-            Guid commandId,
-            [CanBeNull] IDiagnosticsLogger<DbLoggerCategory.Database.Command>? logger)
-            => new(connection, command, reader, commandId, logger);
+        protected virtual RelationalDataReader CreateRelationalDataReader()
+             => new(this);
+
+        /// <summary>
+        ///     Populates this command from the provided <paramref name="templateCommand"/>.
+        /// </summary>
+        /// <param name="templateCommand"> A template command from which the command text and parameters will be copied. </param>
+        public virtual void PopulateFromTemplate(IRelationalCommand templateCommand)
+        {
+            CommandText = templateCommand.CommandText;
+            Parameters = templateCommand.Parameters;
+        }
     }
 }

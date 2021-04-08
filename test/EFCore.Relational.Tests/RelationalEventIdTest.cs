@@ -11,7 +11,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -120,6 +119,7 @@ namespace Microsoft.EntityFrameworkCore
         {
         }
 
+        [Migration("00000000000000_FakeMigration")]
         private class FakeMigration : Migration
         {
             protected override void Up(MigrationBuilder migrationBuilder)
@@ -133,7 +133,7 @@ namespace Microsoft.EntityFrameworkCore
             {
             }
 
-            protected override void Print([NotNull] ExpressionPrinter expressionPrinter)
+            protected override void Print(ExpressionPrinter expressionPrinter)
                 => expressionPrinter.Append("FakeSqlExpression");
         }
 
@@ -255,6 +255,12 @@ namespace Microsoft.EntityFrameworkCore
                 => throw new NotImplementedException();
 
             public ValueTask DisposeAsync()
+                => throw new NotImplementedException();
+
+            public IRelationalCommand RentCommand()
+                => throw new NotImplementedException();
+
+            public void ReturnCommand(IRelationalCommand command)
                 => throw new NotImplementedException();
         }
 

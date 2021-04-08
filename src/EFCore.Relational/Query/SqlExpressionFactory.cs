@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -13,9 +13,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
-using CA = System.Diagnostics.CodeAnalysis;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.Query
 {
@@ -29,7 +26,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         ///     Creates a new instance of the <see cref="SqlExpressionFactory" /> class.
         /// </summary>
         /// <param name="dependencies"> Parameter object containing dependencies for this class. </param>
-        public SqlExpressionFactory([NotNull] SqlExpressionFactoryDependencies dependencies)
+        public SqlExpressionFactory(SqlExpressionFactoryDependencies dependencies)
         {
             Check.NotNull(dependencies, nameof(dependencies));
 
@@ -38,7 +35,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         }
 
         /// <inheritdoc />
-        [return: CA.NotNullIfNotNull("sqlExpression")]
+        [return: NotNullIfNotNull("sqlExpression")]
         public virtual SqlExpression? ApplyDefaultTypeMapping(SqlExpression? sqlExpression)
         {
             return sqlExpression == null
@@ -52,7 +49,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         }
 
         /// <inheritdoc />
-        [return: CA.NotNullIfNotNull("sqlExpression")]
+        [return: NotNullIfNotNull("sqlExpression")]
         public virtual SqlExpression? ApplyTypeMapping(SqlExpression? sqlExpression, RelationalTypeMapping? typeMapping)
         {
 #pragma warning disable IDE0046 // Convert to conditional expression
@@ -910,7 +907,7 @@ namespace Microsoft.EntityFrameworkCore.Query
 
         private bool AddDiscriminatorCondition(SelectExpression selectExpression, IEntityType entityType)
         {
-            var discriminatorProperty = entityType.GetDiscriminatorProperty();
+            var discriminatorProperty = entityType.FindDiscriminatorProperty();
             if (discriminatorProperty == null
                 || (entityType.GetRootType().GetIsDiscriminatorMappingComplete()
                     && entityType.GetAllBaseTypesInclusiveAscending()
@@ -941,66 +938,30 @@ namespace Microsoft.EntityFrameworkCore.Query
             ITableBase table)
         {
             SqlExpression? predicate = null;
+            var entityProjectionExpression = GetMappedEntityProjectionExpression(selectExpression);
             var requiredNonPkProperties = entityType.GetProperties().Where(p => !p.IsNullable && !p.IsPrimaryKey()).ToList();
             if (requiredNonPkProperties.Count > 0)
             {
-                var entityProjectionExpression = GetMappedEntityProjectionExpression(selectExpression);
-                predicate = IsNotNull(requiredNonPkProperties[0], entityProjectionExpression);
-
-                if (requiredNonPkProperties.Count > 1)
-                {
-                    predicate
-                        = requiredNonPkProperties
-                            .Skip(1)
-                            .Aggregate(
-                                predicate, (current, property) =>
-                                    AndAlso(
-                                        IsNotNull(property, entityProjectionExpression),
-                                        current));
-                }
-
-                selectExpression.ApplyPredicate(predicate);
+                predicate = requiredNonPkProperties.Select(e => IsNotNull(e, entityProjectionExpression)).Aggregate((l, r) => AndAlso(l, r));
             }
-            else
+
+            var allNonSharedNonPkProperties = entityType.GetNonPrincipalSharedNonPkProperties(table);
+            // We don't need condition for nullable property if there exist at least one required property which is non shared.
+            if (allNonSharedNonPkProperties.Count != 0
+                && allNonSharedNonPkProperties.All(p => p.IsNullable))
             {
-                var allNonPkProperties = entityType.GetProperties().Where(p => !p.IsPrimaryKey()).ToList();
-                if (allNonPkProperties.Count > 0)
-                {
-                    var entityProjectionExpression = GetMappedEntityProjectionExpression(selectExpression);
-                    predicate = IsNotNull(allNonPkProperties[0], entityProjectionExpression);
+                var atLeastOneNonNullValueInNullablePropertyCondition = allNonSharedNonPkProperties
+                    .Select(e => IsNotNull(e, entityProjectionExpression))
+                    .Aggregate((a, b) => OrElse(a, b));
 
-                    if (allNonPkProperties.Count > 1)
-                    {
-                        predicate
-                            = allNonPkProperties
-                                .Skip(1)
-                                .Aggregate(
-                                    predicate, (current, property) =>
-                                        OrElse(
-                                            IsNotNull(property, entityProjectionExpression),
-                                            current));
-                    }
+                predicate = predicate == null
+                    ? atLeastOneNonNullValueInNullablePropertyCondition
+                    : AndAlso(predicate, atLeastOneNonNullValueInNullablePropertyCondition);
+            }
 
-                    selectExpression.ApplyPredicate(predicate);
-
-                    // If there is no non-nullable property then we also need to add optional dependents which are acting as principal for
-                    // other dependents.
-                    foreach (var referencingFk in entityType.GetReferencingForeignKeys())
-                    {
-                        if (referencingFk.PrincipalEntityType.IsAssignableFrom(entityType))
-                        {
-                            continue;
-                        }
-
-                        var otherSelectExpression = new SelectExpression(entityType, this);
-
-                        var sameTable = table.EntityTypeMappings.Any(m => m.EntityType == referencingFk.DeclaringEntityType)
-                            && table.IsOptional(referencingFk.DeclaringEntityType);
-                        AddInnerJoin(otherSelectExpression, referencingFk, sameTable ? table : null);
-
-                        selectExpression.ApplyUnion(otherSelectExpression, distinct: true);
-                    }
-                }
+            if (predicate != null)
+            {
+                selectExpression.ApplyPredicate(predicate);
             }
         }
 

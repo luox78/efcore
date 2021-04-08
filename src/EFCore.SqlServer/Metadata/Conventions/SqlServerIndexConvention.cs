@@ -3,13 +3,10 @@
 
 using System.Collections.Generic;
 using System.Text;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
-
-#nullable enable
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
@@ -35,9 +32,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         /// <param name="relationalDependencies">  Parameter object containing relational dependencies for this convention. </param>
         /// <param name="sqlGenerationHelper"> SQL command generation helper service. </param>
         public SqlServerIndexConvention(
-            [NotNull] ProviderConventionSetBuilderDependencies dependencies,
-            [NotNull] RelationalConventionSetBuilderDependencies relationalDependencies,
-            [NotNull] ISqlGenerationHelper sqlGenerationHelper)
+            ProviderConventionSetBuilderDependencies dependencies,
+            RelationalConventionSetBuilderDependencies relationalDependencies,
+            ISqlGenerationHelper sqlGenerationHelper)
         {
             _sqlGenerationHelper = sqlGenerationHelper;
             Dependencies = dependencies;
@@ -194,7 +191,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             return builder.ToString();
         }
 
-        private List<string>? GetNullableColumns(IIndex index)
+        private List<string>? GetNullableColumns(IReadOnlyIndex index)
         {
             var tableName = index.DeclaringEntityType.GetTableName();
             if (tableName == null)

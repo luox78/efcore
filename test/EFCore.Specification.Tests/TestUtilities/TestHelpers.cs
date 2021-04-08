@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
@@ -128,26 +127,18 @@ namespace Microsoft.EntityFrameworkCore.TestUtilities
         public IServiceProvider CreateContextServices(IServiceCollection customServices)
             => ((IInfrastructure<IServiceProvider>)CreateContext(customServices)).Instance;
 
-        public IMutableModel BuildModelFor<TEntity>()
-            where TEntity : class
+        public IModel Finalize(ModelBuilder modelBuilder, bool designTime = false, bool skipValidation = false)
         {
-            var builder = CreateConventionBuilder();
-            builder.Entity<TEntity>();
-            return builder.Model;
+            var contextServices = CreateContextServices();
+
+            var modelRuntimeInitializer = contextServices.GetRequiredService<IModelRuntimeInitializer>();
+            return modelRuntimeInitializer.Initialize(modelBuilder.FinalizeModel(), designTime, skipValidation
+                ? null
+                : new TestLogger<DbLoggerCategory.Model.Validation, TestLoggingDefinitions>(LoggingDefinitions));
         }
 
-        public ModelBuilder CreateConventionBuilder(bool skipValidation = false)
-        {
-            var conventionSet = CreateConventionSetBuilder().CreateConventionSet();
-
-            if (skipValidation)
-            {
-                // Use public API to remove convention, issue #214
-                ConventionSet.Remove(conventionSet.ModelFinalizedConventions, typeof(ValidatingConvention));
-            }
-
-            return new ModelBuilder(conventionSet);
-        }
+        public ModelBuilder CreateConventionBuilder()
+            => new ModelBuilder(CreateConventionSetBuilder().CreateConventionSet());
 
         public virtual IConventionSetBuilder CreateConventionSetBuilder()
             => CreateContextServices().GetRequiredService<IConventionSetBuilder>();

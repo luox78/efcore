@@ -6,15 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Utilities;
-
-#nullable enable
 
 namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
 {
@@ -38,8 +35,8 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         public InMemoryQueryableMethodTranslatingExpressionVisitor(
-            [NotNull] QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
-            [NotNull] QueryCompilationContext queryCompilationContext)
+            QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
+            QueryCompilationContext queryCompilationContext)
             : base(dependencies, queryCompilationContext, subquery: false)
         {
             _expressionTranslator = new InMemoryExpressionTranslatingExpressionVisitor(queryCompilationContext, this);
@@ -55,7 +52,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
         protected InMemoryQueryableMethodTranslatingExpressionVisitor(
-            [NotNull] InMemoryQueryableMethodTranslatingExpressionVisitor parentVisitor)
+            InMemoryQueryableMethodTranslatingExpressionVisitor parentVisitor)
             : base(parentVisitor.Dependencies, parentVisitor.QueryCompilationContext, subquery: true)
         {
             _expressionTranslator = new InMemoryExpressionTranslatingExpressionVisitor(QueryCompilationContext, parentVisitor);
@@ -156,7 +153,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             if (source.ShaperExpression is GroupByShaperExpression)
             {
                 inMemoryQueryExpression.ReplaceProjectionMapping(new Dictionary<ProjectionMember, Expression>());
-                inMemoryQueryExpression.PushdownIntoSubquery();
             }
 
             inMemoryQueryExpression.UpdateServerQueryExpression(
@@ -191,7 +187,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             if (source.ShaperExpression is GroupByShaperExpression)
             {
                 inMemoryQueryExpression.ReplaceProjectionMapping(new Dictionary<ProjectionMember, Expression>());
-                inMemoryQueryExpression.PushdownIntoSubquery();
             }
 
             inMemoryQueryExpression.UpdateServerQueryExpression(
@@ -304,7 +299,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             if (source.ShaperExpression is GroupByShaperExpression)
             {
                 inMemoryQueryExpression.ReplaceProjectionMapping(new Dictionary<ProjectionMember, Expression>());
-                inMemoryQueryExpression.PushdownIntoSubquery();
             }
 
             inMemoryQueryExpression.UpdateServerQueryExpression(
@@ -346,7 +340,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
 
             var inMemoryQueryExpression = (InMemoryQueryExpression)source.QueryExpression;
 
-            inMemoryQueryExpression.PushdownIntoSubquery();
             inMemoryQueryExpression.UpdateServerQueryExpression(
                 Expression.Call(
                     EnumerableMethods.Distinct.MakeGenericMethod(inMemoryQueryExpression.CurrentParameter.Type),
@@ -430,13 +423,14 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             var translatedKey = TranslateGroupingKey(remappedKeySelector);
             if (translatedKey != null)
             {
-                if (elementSelector != null)
+                var inMemoryQueryExpression = (InMemoryQueryExpression)source.QueryExpression;
+                var defaultElementSelector = elementSelector == null || elementSelector.Body == elementSelector.Parameters[0];
+                if (!defaultElementSelector)
                 {
-                    source = TranslateSelect(source, elementSelector);
+                    source = TranslateSelect(source, elementSelector!);
                 }
 
-                var inMemoryQueryExpression = (InMemoryQueryExpression)source.QueryExpression;
-                var groupByShaper = inMemoryQueryExpression.ApplyGrouping(translatedKey, source.ShaperExpression);
+                var groupByShaper = inMemoryQueryExpression.ApplyGrouping(translatedKey, source.ShaperExpression, defaultElementSelector);
 
                 if (resultSelector == null)
                 {
@@ -452,7 +446,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
 
                 newResultSelectorBody = ExpandWeakEntities(inMemoryQueryExpression, newResultSelectorBody);
                 var newShaper = _projectionBindingExpressionVisitor.Translate(inMemoryQueryExpression, newResultSelectorBody);
-                inMemoryQueryExpression.PushdownIntoSubquery();
 
                 return source.UpdateShaperExpression(newShaper);
             }
@@ -806,7 +799,6 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             if (source.ShaperExpression is GroupByShaperExpression)
             {
                 inMemoryQueryExpression.ReplaceProjectionMapping(new Dictionary<ProjectionMember, Expression>());
-                inMemoryQueryExpression.PushdownIntoSubquery();
             }
 
             inMemoryQueryExpression.UpdateServerQueryExpression(
@@ -974,14 +966,9 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             var newSelectorBody = ReplacingExpressionVisitor.Replace(
                 selector.Parameters.Single(), source.ShaperExpression, selector.Body);
 
-            var groupByQuery = source.ShaperExpression is GroupByShaperExpression;
             var queryExpression = (InMemoryQueryExpression)source.QueryExpression;
 
             var newShaper = _projectionBindingExpressionVisitor.Translate(queryExpression, newSelectorBody);
-            if (groupByQuery)
-            {
-                queryExpression.PushdownIntoSubquery();
-            }
 
             return source.UpdateShaperExpression(newShaper);
         }
@@ -1384,7 +1371,7 @@ namespace Microsoft.EntityFrameworkCore.InMemory.Query.Internal
             private Expression? TryExpand(Expression? source, MemberIdentity member)
             {
                 source = source.UnwrapTypeConversion(out var convertedType);
-                if (!(source is EntityShaperExpression entityShaperExpression))
+                if (source is not EntityShaperExpression entityShaperExpression)
                 {
                     return null;
                 }

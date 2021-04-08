@@ -16,37 +16,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     public class ModelTest
     {
         [ConditionalFact]
-        public void Use_of_custom_IModel_throws()
-        {
-            var model = new FakeModel();
-
-            Assert.Equal(
-                CoreStrings.CustomMetadata(nameof(Use_of_custom_IModel_throws), nameof(IModel), nameof(FakeModel)),
-                Assert.Throws<NotSupportedException>(() => model.AsModel()).Message);
-        }
-
-        private class FakeModel : IModel
-        {
-            public object this[string name]
-                => throw new NotImplementedException();
-
-            public IAnnotation FindAnnotation(string name)
-                => throw new NotImplementedException();
-
-            public IEnumerable<IAnnotation> GetAnnotations()
-                => throw new NotImplementedException();
-
-            public IEnumerable<IEntityType> GetEntityTypes()
-                => throw new NotImplementedException();
-
-            public IEntityType FindEntityType(string name)
-                => throw new NotImplementedException();
-
-            public IEntityType FindEntityType(string name, string definingNavigationName, IEntityType definingEntityType)
-                => throw new NotImplementedException();
-        }
-
-        [ConditionalFact]
         public void Model_throws_when_readonly()
         {
             var model = CreateModel();

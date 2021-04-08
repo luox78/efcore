@@ -162,12 +162,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
             var propertyBuilder = entityTypeBuilder.Property(typeof(int), "MyPrimaryKey", ConfigurationSource.Explicit);
 
-            Assert.Null(entityTypeBuilder.Metadata.FindDeclaredPrimaryKey());
+            Assert.Null(entityTypeBuilder.Metadata.FindPrimaryKey());
 
             RunConvention(propertyBuilder);
 
-            Assert.Equal(1, entityTypeBuilder.Metadata.FindDeclaredPrimaryKey().Properties.Count);
-            Assert.Equal("MyPrimaryKey", entityTypeBuilder.Metadata.FindDeclaredPrimaryKey().Properties[0].Name);
+            Assert.Equal(1, entityTypeBuilder.Metadata.FindPrimaryKey().Properties.Count);
+            Assert.Equal("MyPrimaryKey", entityTypeBuilder.Metadata.FindPrimaryKey().Properties[0].Name);
         }
 
         [ConditionalFact]
@@ -175,15 +175,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         {
             var entityTypeBuilder = CreateInternalEntityTypeBuilder<B>();
 
-            Assert.Null(entityTypeBuilder.Metadata.FindDeclaredPrimaryKey());
+            Assert.Null(entityTypeBuilder.Metadata.FindPrimaryKey());
 
             var idPropertyBuilder = entityTypeBuilder.Property(typeof(int), "Id", ConfigurationSource.Explicit);
             var myPrimaryKeyPropertyBuilder = entityTypeBuilder.Property(typeof(int), "MyPrimaryKey", ConfigurationSource.Explicit);
 
             RunConvention(idPropertyBuilder);
 
-            Assert.Equal(1, entityTypeBuilder.Metadata.FindDeclaredPrimaryKey().Properties.Count);
-            Assert.Equal("Id", entityTypeBuilder.Metadata.FindDeclaredPrimaryKey().Properties[0].Name);
+            Assert.Equal(1, entityTypeBuilder.Metadata.FindPrimaryKey().Properties.Count);
+            Assert.Equal("Id", entityTypeBuilder.Metadata.FindPrimaryKey().Properties[0].Name);
 
             RunConvention(myPrimaryKeyPropertyBuilder);
 
@@ -519,7 +519,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         {
             var entityTypeBuilder = CreateInternalEntityTypeBuilder<A>();
 
-            var propertyBuilder = entityTypeBuilder.Property(typeof(int?), "BackingFieldProperty", ConfigurationSource.Explicit);
+            IConventionPropertyBuilder propertyBuilder = entityTypeBuilder.Property(
+                typeof(int?), "BackingFieldProperty", ConfigurationSource.Explicit);
 
             RunConvention(propertyBuilder);
 
@@ -532,14 +533,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         {
             var entityTypeBuilder = CreateInternalEntityTypeBuilder<A>();
 
-            var propertyBuilder = entityTypeBuilder.Property(typeof(int?), "BackingFieldProperty", ConfigurationSource.Explicit);
+            var propertyBuilder = entityTypeBuilder.Property(
+                typeof(int?), "BackingFieldProperty", ConfigurationSource.Explicit);
 
             propertyBuilder.HasField("_backingFieldForFluentApi", ConfigurationSource.Explicit);
 
             RunConvention(propertyBuilder);
 
             // also asserts that the default backing field, _backingFieldProperty, was _not_ chosen
-            Assert.Equal("_backingFieldForFluentApi", propertyBuilder.Metadata.GetFieldName());
+            Assert.Equal("_backingFieldForFluentApi", ((IConventionProperty)propertyBuilder.Metadata).GetFieldName());
         }
 
         #endregion
@@ -667,11 +669,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             return modelBuilder.Entity(typeof(T), ConfigurationSource.Explicit);
         }
 
-        private static void RunConvention(InternalPropertyBuilder propertyBuilder)
+        private static void RunConvention(IConventionPropertyBuilder propertyBuilder)
         {
             var dependencies = CreateDependencies();
             var context = new ConventionContext<IConventionPropertyBuilder>(
-                propertyBuilder.Metadata.DeclaringEntityType.Model.ConventionDispatcher);
+                ((Model)propertyBuilder.Metadata.DeclaringEntityType.Model).ConventionDispatcher);
 
             new BackingFieldConvention(dependencies)
                 .ProcessPropertyAdded(propertyBuilder, context);

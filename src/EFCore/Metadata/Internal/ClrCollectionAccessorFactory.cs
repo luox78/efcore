@@ -11,8 +11,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 
-#nullable enable
-
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal
 {
     /// <summary>
@@ -50,7 +48,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         ///     any release. You should only use it directly in your code with extreme caution and knowing that
         ///     doing so can result in application failures when updating to a new Entity Framework Core release.
         /// </summary>
-        public virtual IClrCollectionAccessor? Create([NotNull] INavigationBase navigation)
+        public virtual IClrCollectionAccessor? Create(INavigationBase navigation)
             => !navigation.IsCollection || navigation.IsShadowProperty() ? null : Create(navigation, navigation.TargetEntityType);
 
         private IClrCollectionAccessor? Create(IPropertyBase navigation, IEntityType? targetType)
@@ -127,8 +125,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             var valueParameter = Expression.Parameter(typeof(TCollection), "collection");
 
             var memberInfoForRead = navigation.GetMemberInfo(forMaterialization: false, forSet: false);
-            var memberInfoForWrite = navigation.GetMemberInfo(forMaterialization: false, forSet: true);
-            var memberInfoForMaterialization = navigation.GetMemberInfo(forMaterialization: true, forSet: true);
+            navigation.TryGetMemberInfo(forConstruction: false, forSet: true, out var memberInfoForWrite, out _);
+            navigation.TryGetMemberInfo(forConstruction: true, forSet: true, out var memberInfoForMaterialization, out _);
 
             var memberAccessForRead = (Expression)Expression.MakeMemberAccess(entityParameter, memberInfoForRead);
             if (memberAccessForRead.Type != typeof(TCollection))
