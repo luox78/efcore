@@ -20,7 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_gears()
         {
-            var requestUri = string.Format("{0}/odata/Gears", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Gears";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -36,7 +36,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_inheritance()
         {
-            var requestUri = string.Format("{0}/odata/Gears/Microsoft.EntityFrameworkCore.TestModels.GearsOfWarModel.Officer", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Gears/Microsoft.EntityFrameworkCore.TestModels.GearsOfWarModel.Officer";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -52,7 +52,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_single_element_from_set_composite_key()
         {
-            var requestUri = string.Format("{0}/odata/Gears(Nickname='Marcus', SquadId=1)", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Gears(Nickname='Marcus', SquadId=1)";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -64,7 +64,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             Assert.Equal("Marcus", result["Nickname"].ToString());
         }
 
-        [ConditionalFact]
+        [ConditionalFact(Skip = "OData/WebApi#2437")]
         public async Task Complex_query_with_any_on_collection_navigation()
         {
             var requestUri = string.Format(@"{0}/odata/Gears?$filter=Weapons/any(w: w/Id gt 4)", BaseAddress);

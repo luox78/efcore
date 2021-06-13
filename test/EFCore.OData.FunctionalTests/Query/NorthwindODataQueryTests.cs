@@ -20,7 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_customers()
         {
-            var requestUri = string.Format("{0}/odata/Customers", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Customers";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -47,7 +47,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             Assert.Equal("ALFKI", result["CustomerID"].ToString());
         }
 
-        [ConditionalFact]
+        [ConditionalFact(Skip = "OData/WebApi#2437")]
         public async Task Query_for_alfki_expand_orders()
         {
             var requestUri = string.Format(@"{0}/odata/Customers?$filter=CustomerID eq 'ALFKI'&$expand=Orders", BaseAddress);
@@ -69,7 +69,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_orders()
         {
-            var requestUri = string.Format("{0}/odata/Orders", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Orders";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -85,7 +85,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Query_orders_select_single_property()
         {
-            var requestUri = string.Format("{0}/odata/Orders?$select=OrderDate", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Orders?$select=OrderDate";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 
@@ -101,7 +101,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         [ConditionalFact]
         public async Task Basic_query_order_details()
         {
-            var requestUri = string.Format("{0}/odata/Order Details", BaseAddress);
+            var requestUri = $"{BaseAddress}/odata/Order Details";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             var response = await Client.SendAsync(request);
 

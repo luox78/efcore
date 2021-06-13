@@ -558,7 +558,7 @@ namespace Microsoft.EntityFrameworkCore.Query
 
             private BlockExpression CreateFullMaterializeExpression(
                 IEntityType concreteEntityType,
-                in (Type ReturnType,
+                (Type ReturnType,
                     ParameterExpression MaterializationContextVariable,
                     ParameterExpression ConcreteEntityTypeVariable,
                     ParameterExpression ShadowValuesVariable) materializeExpressionContext)
@@ -579,6 +579,7 @@ namespace Microsoft.EntityFrameworkCore.Query
                     var valueBufferExpression = Expression.Call(
                         materializationContextVariable, MaterializationContext.GetValueBufferMethod);
                     var shadowProperties = concreteEntityType.GetProperties().Where(p => p.IsShadowProperty());
+
                     blockExpressions.Add(
                         Expression.Assign(
                             shadowValuesVariable,

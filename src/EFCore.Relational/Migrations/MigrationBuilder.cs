@@ -793,8 +793,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 {
                     addColumnOperation.Name = property.Name;
                 }
-                // TODO
-                //addColumnOperation.Validate();
+                // TODO: addColumnOperation.Validate();
 
                 columnMap.Add(property, addColumnOperation);
             }
@@ -1067,6 +1066,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 Name = name,
                 NewName = newName
             };
+
             Operations.Add(operation);
 
             return new OperationBuilder<RenameIndexOperation>(operation);

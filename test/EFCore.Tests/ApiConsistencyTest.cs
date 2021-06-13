@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -82,7 +83,10 @@ namespace Microsoft.EntityFrameworkCore
                 typeof(CompiledQueryCacheKeyGenerator).GetMethod("GenerateCacheKeyCore", AnyInstance),
                 typeof(InternalEntityEntry).GetMethod("get_Item"),
                 typeof(InternalEntityEntry).GetMethod("set_Item"),
-                typeof(InternalEntityEntry).GetMethod(nameof(InternalEntityEntry.HasDefaultValue))
+                typeof(InternalEntityEntry).GetMethod(nameof(InternalEntityEntry.HasDefaultValue)),
+                typeof(DiagnosticsLogger<>).GetMethod("DispatchEventData", AnyInstance),
+                typeof(DiagnosticsLogger<>).GetMethod("ShouldLog", AnyInstance),
+                typeof(DiagnosticsLogger<>).GetMethod("NeedsEventData", AnyInstance)
             };
 
             public override HashSet<MethodInfo> NotAnnotatedMethods { get; } = new()
@@ -158,6 +162,7 @@ namespace Microsoft.EntityFrameworkCore
                 typeof(IConventionAnnotatable).GetMethod(nameof(IConventionAnnotatable.SetOrRemoveAnnotation)),
                 typeof(IConventionAnnotatable).GetMethod(nameof(IConventionAnnotatable.AddAnnotations)),
                 typeof(IMutableAnnotatable).GetMethod(nameof(IMutableAnnotatable.AddAnnotations)),
+                typeof(IConventionModel).GetMethod(nameof(IConventionModel.IsIgnoredType)),
                 typeof(IConventionModel).GetMethod(nameof(IConventionModel.IsShared)),
                 typeof(IConventionModel).GetMethod(nameof(IConventionModel.AddOwned)),
                 typeof(IConventionModel).GetMethod(nameof(IConventionModel.AddShared)),

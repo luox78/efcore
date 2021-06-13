@@ -19,14 +19,14 @@ namespace Microsoft.EntityFrameworkCore.Update
         [ConditionalFact]
         public void Compare_returns_0_only_for_commands_that_are_equal()
         {
-            var modelBuilder = new ModelBuilder(TestRelationalConventionSetBuilder.Build());
+            var modelBuilder = RelationalTestHelpers.Instance.CreateConventionBuilder();
             var model = modelBuilder.Model;
             var entityType = model.AddEntityType(typeof(object));
             var key = entityType.AddProperty("Id", typeof(int));
             entityType.SetPrimaryKey(key);
 
             var optionsBuilder = new DbContextOptionsBuilder()
-                .UseModel(RelationalTestHelpers.Instance.Finalize(modelBuilder))
+                .UseModel(modelBuilder.FinalizeModel())
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider);
 
@@ -35,19 +35,19 @@ namespace Microsoft.EntityFrameworkCore.Update
             var entry1 = stateManager.GetOrCreateEntry(new object());
             entry1[(IProperty)key] = 1;
             entry1.SetEntityState(EntityState.Added);
-            var modificationCommandAdded = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommandAdded = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommandAdded.AddEntry(entry1, true);
 
             var entry2 = stateManager.GetOrCreateEntry(new object());
             entry2[(IProperty)key] = 2;
             entry2.SetEntityState(EntityState.Modified);
-            var modificationCommandModified = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommandModified = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommandModified.AddEntry(entry2, true);
 
             var entry3 = stateManager.GetOrCreateEntry(new object());
             entry3[(IProperty)key] = 3;
             entry3.SetEntityState(EntityState.Deleted);
-            var modificationCommandDeleted = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommandDeleted = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommandDeleted.AddEntry(entry3, true);
 
             var mCC = new ModificationCommandComparer();
@@ -57,44 +57,44 @@ namespace Microsoft.EntityFrameworkCore.Update
             Assert.True(
                 0
                 == mCC.Compare(
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null)));
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null)));
 
-            Assert.True(0 > mCC.Compare(null, new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null)));
-            Assert.True(0 < mCC.Compare(new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null), null));
-
-            Assert.True(
-                0
-                > mCC.Compare(
-                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null)));
-            Assert.True(
-                0
-                < mCC.Compare(
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null)));
+            Assert.True(0 > mCC.Compare(null, new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null)));
+            Assert.True(0 < mCC.Compare(new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null), null));
 
             Assert.True(
                 0
                 > mCC.Compare(
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", "foo", new ParameterNameGenerator().GenerateNext, false, null)));
+                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null)));
             Assert.True(
                 0
                 < mCC.Compare(
-                    new ModificationCommand("A", "foo", new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null)));
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null)));
 
             Assert.True(
                 0
                 > mCC.Compare(
-                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("B", null, new ParameterNameGenerator().GenerateNext, false, null)));
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", "foo", new ParameterNameGenerator().GenerateNext, false, null, null)));
             Assert.True(
                 0
                 < mCC.Compare(
-                    new ModificationCommand("B", null, new ParameterNameGenerator().GenerateNext, false, null),
-                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null)));
+                    new ModificationCommand("A", "foo", new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", "dbo", new ParameterNameGenerator().GenerateNext, false, null, null)));
+
+            Assert.True(
+                0
+                > mCC.Compare(
+                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("B", null, new ParameterNameGenerator().GenerateNext, false, null, null)));
+            Assert.True(
+                0
+                < mCC.Compare(
+                    new ModificationCommand("B", null, new ParameterNameGenerator().GenerateNext, false, null, null),
+                    new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null)));
 
             Assert.True(0 > mCC.Compare(modificationCommandModified, modificationCommandAdded));
             Assert.True(0 < mCC.Compare(modificationCommandAdded, modificationCommandModified));
@@ -160,7 +160,7 @@ namespace Microsoft.EntityFrameworkCore.Update
 
         private void Compare_returns_0_only_for_entries_that_have_same_key_values_generic<T>(T value1, T value2)
         {
-            var modelBuilder = new ModelBuilder(TestRelationalConventionSetBuilder.Build());
+            var modelBuilder = RelationalTestHelpers.Instance.CreateConventionBuilder();
             var model = modelBuilder.Model;
             var entityType = model.AddEntityType(typeof(object));
 
@@ -170,7 +170,7 @@ namespace Microsoft.EntityFrameworkCore.Update
 
             var optionsBuilder = new DbContextOptionsBuilder()
                 .UseInternalServiceProvider(InMemoryFixture.DefaultServiceProvider)
-                .UseModel(RelationalTestHelpers.Instance.Finalize(modelBuilder))
+                .UseModel(modelBuilder.FinalizeModel())
                 .UseInMemoryDatabase(Guid.NewGuid().ToString());
 
             var stateManager = new DbContext(optionsBuilder.Options).GetService<IStateManager>();
@@ -178,16 +178,16 @@ namespace Microsoft.EntityFrameworkCore.Update
             var entry1 = stateManager.GetOrCreateEntry(new object());
             entry1[(IProperty)keyProperty] = value1;
             entry1.SetEntityState(EntityState.Modified);
-            var modificationCommand1 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommand1 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommand1.AddEntry(entry1, true);
 
             var entry2 = stateManager.GetOrCreateEntry(new object());
             entry2[(IProperty)keyProperty] = value2;
             entry2.SetEntityState(EntityState.Modified);
-            var modificationCommand2 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommand2 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommand2.AddEntry(entry2, true);
 
-            var modificationCommand3 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null);
+            var modificationCommand3 = new ModificationCommand("A", null, new ParameterNameGenerator().GenerateNext, false, null, null);
             modificationCommand3.AddEntry(entry1, true);
 
             var mCC = new ModificationCommandComparer();

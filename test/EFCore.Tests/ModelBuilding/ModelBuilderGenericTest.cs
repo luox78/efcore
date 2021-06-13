@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -61,8 +62,8 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         public class GenericNonRelationship : NonRelationshipTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
 
             [ConditionalFact]
             public virtual void Changing_propertyInfo_updates_Property()
@@ -80,44 +81,44 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
 
         public class GenericInheritance : InheritanceTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         public class GenericOwnedTypes : OwnedTypesTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         public class GenericOneToMany : OneToManyTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         public class GenericManyToOne : ManyToOneTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         public class GenericManyToMany : ManyToManyTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         public class GenericOneToOne : OneToOneTestBase
         {
-            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers)
-                => new GenericTestModelBuilder(testHelpers);
+            protected override TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                => new GenericTestModelBuilder(testHelpers, configure);
         }
 
         protected class GenericTestModelBuilder : TestModelBuilder
         {
-            public GenericTestModelBuilder(TestHelpers testHelpers)
-                : base(testHelpers)
+            public GenericTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
+                : base(testHelpers, configure)
             {
             }
 
@@ -465,6 +466,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public override TestPropertyBuilder<TProperty> HasMaxLength(int maxLength)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasMaxLength(maxLength));
 
+            public override TestPropertyBuilder<TProperty> HasPrecision(int precision, int scale)
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasPrecision(precision, scale));
+
             public override TestPropertyBuilder<TProperty> IsUnicode(bool unicode = true)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.IsUnicode(unicode));
 
@@ -495,6 +499,12 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public override TestPropertyBuilder<TProperty> HasValueGenerator(Func<IReadOnlyProperty, IReadOnlyEntityType, ValueGenerator> factory)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasValueGenerator(factory));
 
+            public override TestPropertyBuilder<TProperty> HasValueGeneratorFactory<TFactory>()
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasValueGeneratorFactory<TFactory>());
+
+            public override TestPropertyBuilder<TProperty> HasValueGeneratorFactory(Type valueGeneratorFactoryType)
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasValueGeneratorFactory(valueGeneratorFactoryType));
+
             public override TestPropertyBuilder<TProperty> HasField(string fieldName)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasField(fieldName));
 
@@ -504,7 +514,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public override TestPropertyBuilder<TProperty> HasConversion<TProvider>()
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion<TProvider>());
 
-            public override TestPropertyBuilder<TProperty> HasConversion(Type providerClrType)
+            public override TestPropertyBuilder<TProperty> HasConversion(Type? providerClrType)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion(providerClrType));
 
             public override TestPropertyBuilder<TProperty> HasConversion<TProvider>(
@@ -518,8 +528,17 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public override TestPropertyBuilder<TProperty> HasConversion<TProvider>(ValueConverter<TProperty, TProvider> converter)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion(converter));
 
-            public override TestPropertyBuilder<TProperty> HasConversion(ValueConverter converter)
+            public override TestPropertyBuilder<TProperty> HasConversion(ValueConverter? converter)
                 => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion(converter));
+
+            public override TestPropertyBuilder<TProperty> HasConversion(ValueConverter? converter, ValueComparer? valueComparer)
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion(converter, valueComparer));
+
+            public override TestPropertyBuilder<TProperty> HasConversion<TConverter, TComparer>()
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion<TConverter, TComparer>());
+
+            public override TestPropertyBuilder<TProperty> HasConversion(Type converterType, Type? comparerType)
+                => new GenericTestPropertyBuilder<TProperty>(PropertyBuilder.HasConversion(converterType, comparerType));
 
             PropertyBuilder<TProperty> IInfrastructure<PropertyBuilder<TProperty>>.Instance
                 => PropertyBuilder;

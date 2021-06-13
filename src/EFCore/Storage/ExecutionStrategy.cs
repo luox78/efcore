@@ -126,7 +126,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
         ///     Indicates whether this <see cref="IExecutionStrategy" /> might retry the execution after a failure.
         /// </summary>
         public virtual bool RetriesOnFailure
-            => !Suspended;
+            => !Suspended && MaxRetryCount > 0;
 
         /// <summary>
         ///     Executes the specified operation and returns the result.
@@ -158,8 +158,8 @@ namespace Microsoft.EntityFrameworkCore.Storage
 
             // In order to avoid infinite recursive generics, wrap operation with ExecutionResult
             return ExecuteImplementation(
-                (context, state) => new ExecutionResult<TResult>(true, operation(context, state)), 
-                verifySucceeded, 
+                (context, state) => new ExecutionResult<TResult>(true, operation(context, state)),
+                verifySucceeded,
                 state).Result;
         }
 
@@ -253,7 +253,7 @@ namespace Microsoft.EntityFrameworkCore.Storage
             }
 
             OnFirstExecution();
-            
+
             // In order to avoid infinite recursive generics, wrap operation with ExecutionResult
             var result = await ExecuteImplementationAsync(
                 async (context, state, cancellationToken) => new ExecutionResult<TResult>(true, await operation(context, state, cancellationToken).ConfigureAwait(false)),
@@ -325,10 +325,11 @@ namespace Microsoft.EntityFrameworkCore.Storage
         /// </summary>
         protected virtual void OnFirstExecution()
         {
-            if (Dependencies.CurrentContext.Context.Database.CurrentTransaction is not null
-                || Dependencies.CurrentContext.Context.Database.GetEnlistedTransaction() is not null
-                || (((IDatabaseFacadeDependenciesAccessor)Dependencies.CurrentContext.Context.Database).Dependencies.TransactionManager as
-                    ITransactionEnlistmentManager)?.CurrentAmbientTransaction is not null)
+            if (RetriesOnFailure &&
+                (Dependencies.CurrentContext.Context.Database.CurrentTransaction is not null
+                 || Dependencies.CurrentContext.Context.Database.GetEnlistedTransaction() is not null
+                 || (((IDatabaseFacadeDependenciesAccessor)Dependencies.CurrentContext.Context.Database).Dependencies.TransactionManager as
+                     ITransactionEnlistmentManager)?.CurrentAmbientTransaction is not null))
             {
                 throw new InvalidOperationException(
                     CoreStrings.ExecutionStrategyExistingTransaction(

@@ -52,6 +52,30 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("ClientGroupByNotSupported");
 
         /// <summary>
+        ///     The function parameter '{function}({parameter})' has a custom type mapping configured. Configure it in '{customize}' in a partial '{className}' class instead.
+        /// </summary>
+        public static string CompiledModelFunctionParameterTypeMapping(object? function, object? parameter, object? customize, object? className)
+            => string.Format(
+                GetString("CompiledModelFunctionParameterTypeMapping", nameof(function), nameof(parameter), nameof(customize), nameof(className)),
+                function, parameter, customize, className);
+
+        /// <summary>
+        ///     The function '{function}' has a custom translation. Compiled model can't be generated, because custom function translations are not supported.
+        /// </summary>
+        public static string CompiledModelFunctionTranslation(object? function)
+            => string.Format(
+                GetString("CompiledModelFunctionTranslation", nameof(function)),
+                function);
+
+        /// <summary>
+        ///     The function '{function}' has a custom type mapping configured. Configure it in '{customize}' in a partial '{className}' class instead.
+        /// </summary>
+        public static string CompiledModelFunctionTypeMapping(object? function, object? customize, object? className)
+            => string.Format(
+                GetString("CompiledModelFunctionTypeMapping", nameof(function), nameof(customize), nameof(className)),
+                function, customize, className);
+
+        /// <summary>
         ///     The computed column SQL has not been specified for the column '{table}.{column}'. Specify the SQL before using Entity Framework to create the database schema.
         /// </summary>
         public static string ComputedColumnSqlUnspecified(object? table, object? column)
@@ -1054,20 +1078,18 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("TransactionAssociatedWithDifferentConnection");
 
         /// <summary>
+        ///     User transaction is not supported with a TransactionSuppressed migrations.
+        /// </summary>
+        public static string TransactionSuppressedMigrationInUserTransaction
+            => GetString("TransactionSuppressedMigrationInUserTransaction");
+
+        /// <summary>
         ///     Unable to bind '{memberType}.{member}' to an entity projection of '{entityType}'.
         /// </summary>
         public static string UnableToBindMemberToEntityProjection(object? memberType, object? member, object? entityType)
             => string.Format(
                 GetString("UnableToBindMemberToEntityProjection", nameof(memberType), nameof(member), nameof(entityType)),
                 memberType, member, entityType);
-
-        /// <summary>
-        ///     The query has been configured to use '{splitQueryEnumValue}', but contains a collection in the 'Select' call which could not be split into a separate query. Remove '{splitQueryMethodName}' if applied, or add '{singleQueryMethodName}' to the query.
-        /// </summary>
-        public static string UnableToSplitCollectionProjectionInSplitQuery(object? splitQueryEnumValue, object? splitQueryMethodName, object? singleQueryMethodName)
-            => string.Format(
-                GetString("UnableToSplitCollectionProjectionInSplitQuery", nameof(splitQueryEnumValue), nameof(splitQueryMethodName), nameof(singleQueryMethodName)),
-                splitQueryEnumValue, splitQueryMethodName, singleQueryMethodName);
 
         /// <summary>
         ///     Unhandled expression '{expression}' of type '{expressionType}' encountered in '{visitor}'.
@@ -2216,6 +2238,56 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics.Internal
                             level,
                             RelationalEventId.ConnectionOpening,
                             _resourceManager.GetString("LogOpeningConnection")!)));
+            }
+
+            return (EventDefinition<string, string>)definition;
+        }
+
+        /// <summary>
+        ///     The entity of type '{entityType}' is an optional dependent using table sharing. The entity does not have any property with a non-default value to identify whether the entity exists. This means that when it is queried no object instance will be created instead of an instance with all properties set to default values. Any nested dependents will also be lost. Either don't save any instance with only default values or mark the incoming navigation as required in the model. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the key values of the entity.
+        /// </summary>
+        public static EventDefinition<string> LogOptionalDependentWithAllNullProperties(IDiagnosticsLogger logger)
+        {
+            var definition = ((RelationalLoggingDefinitions)logger.Definitions).LogOptionalDependentWithAllNullProperties;
+            if (definition == null)
+            {
+                definition = NonCapturingLazyInitializer.EnsureInitialized(
+                    ref ((RelationalLoggingDefinitions)logger.Definitions).LogOptionalDependentWithAllNullProperties,
+                    logger,
+                    static logger => new EventDefinition<string>(
+                        logger.Options,
+                        RelationalEventId.OptionalDependentWithAllNullPropertiesWarning,
+                        LogLevel.Warning,
+                        "RelationalEventId.OptionalDependentWithAllNullPropertiesWarning",
+                        level => LoggerMessage.Define<string>(
+                            level,
+                            RelationalEventId.OptionalDependentWithAllNullPropertiesWarning,
+                            _resourceManager.GetString("LogOptionalDependentWithAllNullProperties")!)));
+            }
+
+            return (EventDefinition<string>)definition;
+        }
+
+        /// <summary>
+        ///     The entity of type '{entityType}' with primary key values {keyValues} is an optional dependent using table sharing. The entity does not have any property with a non-default value to identify whether the entity exists. This means that when it is queried no object instance will be created instead of an instance with all properties set to default values. Any nested dependents will also be lost. Either don't save any instance with only default values or mark the incoming navigation as required in the model.
+        /// </summary>
+        public static EventDefinition<string, string> LogOptionalDependentWithAllNullPropertiesSensitive(IDiagnosticsLogger logger)
+        {
+            var definition = ((RelationalLoggingDefinitions)logger.Definitions).LogOptionalDependentWithAllNullPropertiesSensitive;
+            if (definition == null)
+            {
+                definition = NonCapturingLazyInitializer.EnsureInitialized(
+                    ref ((RelationalLoggingDefinitions)logger.Definitions).LogOptionalDependentWithAllNullPropertiesSensitive,
+                    logger,
+                    static logger => new EventDefinition<string, string>(
+                        logger.Options,
+                        RelationalEventId.OptionalDependentWithAllNullPropertiesWarning,
+                        LogLevel.Warning,
+                        "RelationalEventId.OptionalDependentWithAllNullPropertiesWarning",
+                        level => LoggerMessage.Define<string, string>(
+                            level,
+                            RelationalEventId.OptionalDependentWithAllNullPropertiesWarning,
+                            _resourceManager.GetString("LogOptionalDependentWithAllNullPropertiesSensitive")!)));
             }
 
             return (EventDefinition<string, string>)definition;

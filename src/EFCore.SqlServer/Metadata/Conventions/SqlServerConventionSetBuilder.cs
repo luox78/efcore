@@ -64,6 +64,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             ReplaceConvention(
                 conventionSet.EntityTypeAnnotationChangedConventions, (RelationalValueGenerationConvention)valueGenerationConvention);
 
+            ConventionSet.AddBefore(
+                conventionSet.EntityTypeAnnotationChangedConventions,
+                new SqlServerTemporalConvention(),
+                typeof(SqlServerValueGenerationConvention));
+
             ReplaceConvention(conventionSet.EntityTypePrimaryKeyChangedConventions, valueGenerationConvention);
 
             conventionSet.KeyAddedConventions.Add(sqlServerInMemoryTablesConvention);
@@ -100,6 +105,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                 conventionSet.ModelFinalizingConventions,
                 (SharedTableConvention)new SqlServerSharedTableConvention(Dependencies, RelationalDependencies));
             conventionSet.ModelFinalizingConventions.Add(new SqlServerDbFunctionConvention(Dependencies, RelationalDependencies));
+
+            ReplaceConvention(
+                conventionSet.ModelFinalizedConventions,
+                (RuntimeModelConvention)new SqlServerRuntimeModelConvention(Dependencies, RelationalDependencies));
 
             return conventionSet;
         }

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -22,8 +23,10 @@ using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.EntityFrameworkCore.TestUtilities;
+using Microsoft.EntityFrameworkCore.TestUtilities.FakeProvider;
 using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Xunit;
 using Index = Microsoft.EntityFrameworkCore.Metadata.Internal.Index;
 using IsolationLevel = System.Data.IsolationLevel;
@@ -44,6 +47,7 @@ namespace Microsoft.EntityFrameworkCore
             var foreignKey = new ForeignKey(new List<Property> { property }, key, entityType, entityType, ConfigurationSource.Convention);
             var index = new Index(new List<Property> { property }, "IndexName", entityType, ConfigurationSource.Convention);
             var contextServices = RelationalTestHelpers.Instance.CreateContextServices(model.FinalizeModel());
+            var updateEntry = new InternalEntityEntry(contextServices.GetRequiredService<IStateManager>(), entityType, new object());
 
             var fakeFactories = new Dictionary<Type, Func<object>>
             {
@@ -52,7 +56,7 @@ namespace Microsoft.EntityFrameworkCore
                 {
                     typeof(IEnumerable<IUpdateEntry>), () => new List<IUpdateEntry>
                     {
-                        new InternalClrEntityEntry(
+                        new InternalEntityEntry(
                             contextServices.GetRequiredService<IStateManager>(),
                             entityType,
                             new object())
@@ -78,38 +82,45 @@ namespace Microsoft.EntityFrameworkCore
                 { typeof(Type), () => typeof(object) },
                 { typeof(ValueConverter), () => new BoolToZeroOneConverter<int>() },
                 { typeof(DbContext), () => new FakeDbContext() },
-                { typeof(SqlExpression), () => new FakeSqlExpression() }
+                { typeof(SqlExpression), () => new FakeSqlExpression() },
+                { typeof(IUpdateEntry), () =>  updateEntry}
             };
 
             TestEventLogging(
                 typeof(RelationalEventId),
                 typeof(RelationalLoggerExtensions),
-                typeof(TestRelationalLoggingDefinitions),
+                new[]
+                {
+                    typeof(IRelationalConnectionDiagnosticsLogger),
+                    typeof(IRelationalCommandDiagnosticsLogger)
+                },
+                new TestRelationalLoggingDefinitions(),
                 fakeFactories,
+                services => FakeRelationalOptionsExtension.AddEntityFrameworkRelationalDatabase(services),
                 new Dictionary<string, IList<string>>
                 {
                     {
                         nameof(RelationalEventId.CommandExecuting),
                         new List<string>
                         {
-                            nameof(RelationalLoggerExtensions.CommandReaderExecuting),
-                            nameof(RelationalLoggerExtensions.CommandScalarExecuting),
-                            nameof(RelationalLoggerExtensions.CommandNonQueryExecuting),
-                            nameof(RelationalLoggerExtensions.CommandReaderExecutingAsync),
-                            nameof(RelationalLoggerExtensions.CommandScalarExecutingAsync),
-                            nameof(RelationalLoggerExtensions.CommandNonQueryExecutingAsync)
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandReaderExecuting),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandScalarExecuting),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandNonQueryExecuting),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandReaderExecutingAsync),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandScalarExecutingAsync),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandNonQueryExecutingAsync)
                         }
                     },
                     {
                         nameof(RelationalEventId.CommandExecuted),
                         new List<string>
                         {
-                            nameof(RelationalLoggerExtensions.CommandReaderExecutedAsync),
-                            nameof(RelationalLoggerExtensions.CommandScalarExecutedAsync),
-                            nameof(RelationalLoggerExtensions.CommandNonQueryExecutedAsync),
-                            nameof(RelationalLoggerExtensions.CommandReaderExecuted),
-                            nameof(RelationalLoggerExtensions.CommandScalarExecuted),
-                            nameof(RelationalLoggerExtensions.CommandNonQueryExecuted)
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandReaderExecutedAsync),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandScalarExecutedAsync),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandNonQueryExecutedAsync),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandReaderExecuted),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandScalarExecuted),
+                            nameof(IRelationalCommandDiagnosticsLogger.CommandNonQueryExecuted)
                         }
                     }
                 });

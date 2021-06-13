@@ -179,6 +179,22 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 filter, entityType);
 
         /// <summary>
+        ///     The type '{givenType}' cannot be used as a value comparer because it does not inherit from '{expectedType}'. Make sure to inherit value comparers from '{expectedType}'.
+        /// </summary>
+        public static string BadValueComparerType(object? givenType, object? expectedType)
+            => string.Format(
+                GetString("BadValueComparerType", nameof(givenType), nameof(expectedType)),
+                givenType, expectedType);
+
+        /// <summary>
+        ///     The type '{givenType}' cannot be used as a value converter because it does not inherit from '{expectedType}'. Make sure to inherit value converters from '{expectedType}'.
+        /// </summary>
+        public static string BadValueConverterType(object? givenType, object? expectedType)
+            => string.Format(
+                GetString("BadValueConverterType", nameof(givenType), nameof(expectedType)),
+                givenType, expectedType);
+
+        /// <summary>
         ///     The type '{givenType}' cannot be used as a value generator because it does not inherit from '{expectedType}'. Make sure to inherit value generators from '{expectedType}'.
         /// </summary>
         public static string BadValueGeneratorType(object? givenType, object? expectedType)
@@ -224,12 +240,28 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("CannotConvertQueryableToEnumerableMethod");
 
         /// <summary>
-        ///     Cannot create an instance of value generator type '{generatorType}'. Ensure that the type can be instantiated and has a parameterless constructor, or use the overload of 'HasValueGenerator' that accepts a delegate.
+        ///     Cannot create an instance of value comparer type '{generatorType}'. Ensure that the type can be instantiated and has a parameterless constructor, or use the overload of '{method}' that accepts a delegate.
         /// </summary>
-        public static string CannotCreateValueGenerator(object? generatorType)
+        public static string CannotCreateValueComparer(object? generatorType, object? method)
             => string.Format(
-                GetString("CannotCreateValueGenerator", nameof(generatorType)),
-                generatorType);
+                GetString("CannotCreateValueComparer", nameof(generatorType), nameof(method)),
+                generatorType, method);
+
+        /// <summary>
+        ///     Cannot create an instance of value converter type '{generatorType}'. Ensure that the type can be instantiated and has a parameterless constructor, or use the overload of '{method}' that accepts a delegate.
+        /// </summary>
+        public static string CannotCreateValueConverter(object? generatorType, object? method)
+            => string.Format(
+                GetString("CannotCreateValueConverter", nameof(generatorType), nameof(method)),
+                generatorType, method);
+
+        /// <summary>
+        ///     Cannot create an instance of value generator type '{generatorType}'. Ensure that the type can be instantiated and has a parameterless constructor, or use the overload of '{method}' that accepts a delegate.
+        /// </summary>
+        public static string CannotCreateValueGenerator(object? generatorType, object? method)
+            => string.Format(
+                GetString("CannotCreateValueGenerator", nameof(generatorType), nameof(method)),
+                generatorType, method);
 
         /// <summary>
         ///     The navigation '{1_entityType}.{0_navigation}' cannot be loaded because the entity is not being tracked. Navigations can only be loaded for tracked entities.
@@ -2309,6 +2341,12 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 retryLimit, strategy);
 
         /// <summary>
+        ///     The requested configuration is not stored in the read-optimized model, please use 'DbContext.GetService&lt;IDesignTimeModel&gt;().Model'.
+        /// </summary>
+        public static string RuntimeModelMissingData
+            => GetString("RuntimeModelMissingData");
+
+        /// <summary>
         ///     While registering a runtime parameter, the lambda expression must have only one parameter which must be same as 'QueryCompilationContext.QueryContextParameter' expression.
         /// </summary>
         public static string RuntimeParameterMissingParameter
@@ -2578,12 +2616,6 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 navigation, entityType, otherEntityType);
 
         /// <summary>
-        ///     The requested configuration is not stored in the read-optimized model, please use 'DbContext.DesignTimeModel'.
-        /// </summary>
-        public static string SlimModelMissingData
-            => GetString("SlimModelMissingData");
-
-        /// <summary>
         ///     The property '{1_entityType}.{0_property}' cannot be assigned a value generated by the database. Store-generated values can only be assigned to properties configured to use store-generated values.
         /// </summary>
         public static string StoreGenValue(object? property, object? entityType)
@@ -2638,6 +2670,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 expression, details);
 
         /// <summary>
+        ///     The type '{type}' has been configured as '{typeConfiguration}', this conflicts with type '{otherType}' configured as '{otherTypeConfiguration}'. All base types and implemented interfaces must have the same configuration type.
+        /// </summary>
+        public static string TypeConfigurationConflict(object? type, object? typeConfiguration, object? otherType, object? otherTypeConfiguration)
+            => string.Format(
+                GetString("TypeConfigurationConflict", nameof(type), nameof(typeConfiguration), nameof(otherType), nameof(otherTypeConfiguration)),
+                type, typeConfiguration, otherType, otherTypeConfiguration);
+
+        /// <summary>
         ///     The type '{type}' has not been configured as a shared type in the model. Before calling 'UsingEntity' add the entity type in the model as a shared entity.
         /// </summary>
         public static string TypeNotMarkedAsShared(object? type)
@@ -2660,6 +2700,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => string.Format(
                 GetString("UnableToSetIsUnique", nameof(isUnique), "1_navigationName", "2_entityType"),
                 isUnique, navigationName, entityType);
+
+        /// <summary>
+        ///     The type '{type}' cannot be configured as '{configuration}'. The current model building logic is unable to honor this configuration.
+        /// </summary>
+        public static string UnconfigurableType(object? type, object? configuration)
+            => string.Format(
+                GetString("UnconfigurableType", nameof(type), nameof(configuration)),
+                type, configuration);
 
         /// <summary>
         ///     Unhandled expression node type '{nodeType}'.
@@ -3844,6 +3892,31 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics.Internal
             }
 
             return (EventDefinition<string, string?, string, string?, string?>)definition;
+        }
+
+        /// <summary>
+        ///     The model supplied in the context options was created with EF Core version '{oldVersion}', but the context is from version '{newVersion}'. Update the externally built model.
+        /// </summary>
+        public static EventDefinition<string, string> LogOldModelVersion(IDiagnosticsLogger logger)
+        {
+            var definition = ((LoggingDefinitions)logger.Definitions).LogOldModelVersion;
+            if (definition == null)
+            {
+                definition = NonCapturingLazyInitializer.EnsureInitialized(
+                    ref ((LoggingDefinitions)logger.Definitions).LogOldModelVersion,
+                    logger,
+                    static logger => new EventDefinition<string, string>(
+                        logger.Options,
+                        CoreEventId.OldModelVersionWarning,
+                        LogLevel.Warning,
+                        "CoreEventId.OldModelVersionWarning",
+                        level => LoggerMessage.Define<string, string>(
+                            level,
+                            CoreEventId.OldModelVersionWarning,
+                            _resourceManager.GetString("LogOldModelVersion")!)));
+            }
+
+            return (EventDefinition<string, string>)definition;
         }
 
         /// <summary>

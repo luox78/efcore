@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.SqlServer.Internal;
@@ -40,10 +41,7 @@ namespace Microsoft.EntityFrameworkCore
                 return (string?)annotation.Value;
             }
 
-            var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
-            return sharedTableRootProperty != null
-                ? sharedTableRootProperty.GetHiLoSequenceName(storeObject)
-                : null;
+            return property.FindSharedStoreObjectRootProperty(storeObject)?.GetHiLoSequenceName(storeObject);
         }
 
         /// <summary>
@@ -106,10 +104,7 @@ namespace Microsoft.EntityFrameworkCore
                 return (string?)annotation.Value;
             }
 
-            var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
-            return sharedTableRootProperty != null
-                ? sharedTableRootProperty.GetHiLoSequenceSchema(storeObject)
-                : null;
+            return property.FindSharedStoreObjectRootProperty(storeObject)?.GetHiLoSequenceSchema(storeObject);
         }
 
         /// <summary>
@@ -209,8 +204,11 @@ namespace Microsoft.EntityFrameworkCore
         /// </summary>
         /// <param name="property"> The property. </param>
         /// <returns> The identity seed. </returns>
-        public static int? GetIdentitySeed(this IReadOnlyProperty property)
-            => (int?)property[SqlServerAnnotationNames.IdentitySeed];
+        public static long? GetIdentitySeed(this IReadOnlyProperty property)
+            => property is RuntimeProperty
+            ? throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData)
+            : (long?)property[SqlServerAnnotationNames.IdentitySeed]
+                ?? property.DeclaringEntityType.Model.GetIdentitySeed();
 
         /// <summary>
         ///     Returns the identity seed.
@@ -218,18 +216,23 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="property"> The property. </param>
         /// <param name="storeObject"> The identifier of the store object. </param>
         /// <returns> The identity seed. </returns>
-        public static int? GetIdentitySeed(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
+        public static long? GetIdentitySeed(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
         {
+            if (property is RuntimeProperty)
+            {
+                throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData);
+            }
+
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.IdentitySeed);
             if (annotation != null)
             {
-                return (int?)annotation.Value;
+                return (long?)annotation.Value;
             }
 
-            var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
-            return sharedTableRootProperty != null
-                ? sharedTableRootProperty.GetIdentitySeed(storeObject)
-                : null;
+            var sharedProperty = property.FindSharedStoreObjectRootProperty(storeObject);
+            return sharedProperty == null
+                ? property.DeclaringEntityType.Model.GetIdentitySeed()
+                : sharedProperty.GetIdentitySeed(storeObject);
         }
 
         /// <summary>
@@ -237,7 +240,7 @@ namespace Microsoft.EntityFrameworkCore
         /// </summary>
         /// <param name="property"> The property. </param>
         /// <param name="seed"> The value to set. </param>
-        public static void SetIdentitySeed(this IMutableProperty property, int? seed)
+        public static void SetIdentitySeed(this IMutableProperty property, long? seed)
             => property.SetOrRemoveAnnotation(
                 SqlServerAnnotationNames.IdentitySeed,
                 seed);
@@ -249,9 +252,9 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="seed"> The value to set. </param>
         /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
         /// <returns> The configured value. </returns>
-        public static int? SetIdentitySeed(
+        public static long? SetIdentitySeed(
             this IConventionProperty property,
-            int? seed,
+            long? seed,
             bool fromDataAnnotation = false)
         {
             property.SetOrRemoveAnnotation(
@@ -276,7 +279,10 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="property"> The property. </param>
         /// <returns> The identity increment. </returns>
         public static int? GetIdentityIncrement(this IReadOnlyProperty property)
-            => (int?)property[SqlServerAnnotationNames.IdentityIncrement];
+            => property is RuntimeProperty
+            ? throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData)
+            : (int?)property[SqlServerAnnotationNames.IdentityIncrement]
+                ?? property.DeclaringEntityType.Model.GetIdentityIncrement();
 
         /// <summary>
         ///     Returns the identity increment.
@@ -286,16 +292,21 @@ namespace Microsoft.EntityFrameworkCore
         /// <returns> The identity increment. </returns>
         public static int? GetIdentityIncrement(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
         {
+            if (property is RuntimeProperty)
+            {
+                throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData);
+            }
+
             var annotation = property.FindAnnotation(SqlServerAnnotationNames.IdentityIncrement);
             if (annotation != null)
             {
                 return (int?)annotation.Value;
             }
 
-            var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
-            return sharedTableRootProperty != null
-                ? sharedTableRootProperty.GetIdentityIncrement(storeObject)
-                : null;
+            var sharedProperty = property.FindSharedStoreObjectRootProperty(storeObject);
+            return sharedProperty == null
+                ? property.DeclaringEntityType.Model.GetIdentityIncrement()
+                : sharedProperty.GetIdentityIncrement(storeObject);
         }
 
         /// <summary>
@@ -356,7 +367,7 @@ namespace Microsoft.EntityFrameworkCore
 
             if (property.ValueGenerated != ValueGenerated.OnAdd
                 || property.IsForeignKey()
-                || property.GetDefaultValue() != null
+                || property.TryGetDefaultValue(out _)
                 || property.GetDefaultValueSql() != null
                 || property.GetComputedColumnSql() != null)
             {
@@ -405,7 +416,7 @@ namespace Microsoft.EntityFrameworkCore
 
             if (property.ValueGenerated != ValueGenerated.OnAdd
                 || property.GetContainingForeignKeys().Any(fk => !fk.IsBaseLinking())
-                || property.GetDefaultValue(storeObject) != null
+                || property.TryGetDefaultValue(storeObject, out _)
                 || property.GetDefaultValueSql(storeObject) != null
                 || property.GetComputedColumnSql(storeObject) != null)
             {
@@ -553,7 +564,34 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="property"> The property. </param>
         /// <returns> <see langword="true" /> if the property's column is sparse. </returns>
         public static bool? IsSparse(this IReadOnlyProperty property)
-            => (bool?)property[SqlServerAnnotationNames.Sparse];
+            => property is RuntimeProperty
+            ? throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData)
+            : (bool?)property[SqlServerAnnotationNames.Sparse];
+
+        /// <summary>
+        ///     Returns a value indicating whether the property's column is sparse.
+        /// </summary>
+        /// <param name="property"> The property. </param>
+        /// <param name="storeObject"> The identifier of the store object. </param>
+        /// <returns> <see langword="true" /> if the property's column is sparse. </returns>
+        public static bool? IsSparse(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
+        {
+            if (property is RuntimeProperty)
+            {
+                throw new InvalidOperationException(CoreStrings.RuntimeModelMissingData);
+            }
+
+            var annotation = property.FindAnnotation(SqlServerAnnotationNames.Sparse);
+            if (annotation != null)
+            {
+                return (bool?)annotation.Value;
+            }
+
+            var sharedTableRootProperty = property.FindSharedStoreObjectRootProperty(storeObject);
+            return sharedTableRootProperty != null
+                ? sharedTableRootProperty.IsSparse(storeObject)
+                : null;
+        }
 
         /// <summary>
         ///     Sets a value indicating whether the property's column is sparse.
@@ -561,7 +599,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="property"> The property. </param>
         /// <param name="sparse"> The value to set. </param>
         public static void SetIsSparse(this IMutableProperty property, bool? sparse)
-            => property.SetOrRemoveAnnotation(SqlServerAnnotationNames.Sparse, sparse);
+            => property.SetAnnotation(SqlServerAnnotationNames.Sparse, sparse);
 
         /// <summary>
         ///     Sets a value indicating whether the property's column is sparse.
@@ -575,7 +613,7 @@ namespace Microsoft.EntityFrameworkCore
             bool? sparse,
             bool fromDataAnnotation = false)
         {
-            property.SetOrRemoveAnnotation(
+            property.SetAnnotation(
                 SqlServerAnnotationNames.Sparse,
                 sparse,
                 fromDataAnnotation);

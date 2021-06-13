@@ -130,6 +130,15 @@
   <data name="ClientGroupByNotSupported" xml:space="preserve">
     <value>Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.</value>
   </data>
+  <data name="CompiledModelFunctionParameterTypeMapping" xml:space="preserve">
+    <value>The function parameter '{function}({parameter})' has a custom type mapping configured. Configure it in '{customize}' in a partial '{className}' class instead.</value>
+  </data>
+  <data name="CompiledModelFunctionTranslation" xml:space="preserve">
+    <value>The function '{function}' has a custom translation. Compiled model can't be generated, because custom function translations are not supported.</value>
+  </data>
+  <data name="CompiledModelFunctionTypeMapping" xml:space="preserve">
+    <value>The function '{function}' has a custom type mapping configured. Configure it in '{customize}' in a partial '{className}' class instead.</value>
+  </data>
   <data name="ComputedColumnSqlUnspecified" xml:space="preserve">
     <value>The computed column SQL has not been specified for the column '{table}.{column}'. Specify the SQL before using Entity Framework to create the database schema.</value>
   </data>
@@ -550,6 +559,14 @@
     <value>Opening connection to database '{database}' on server '{server}'.</value>
     <comment>Debug RelationalEventId.ConnectionOpening string string</comment>
   </data>
+  <data name="LogOptionalDependentWithAllNullProperties" xml:space="preserve">
+    <value>The entity of type '{entityType}' is an optional dependent using table sharing. The entity does not have any property with a non-default value to identify whether the entity exists. This means that when it is queried no object instance will be created instead of an instance with all properties set to default values. Any nested dependents will also be lost. Either don't save any instance with only default values or mark the incoming navigation as required in the model. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see the key values of the entity.</value>
+    <comment>Warning RelationalEventId.OptionalDependentWithAllNullPropertiesWarning string</comment>
+  </data>
+  <data name="LogOptionalDependentWithAllNullPropertiesSensitive" xml:space="preserve">
+    <value>The entity of type '{entityType}' with primary key values {keyValues} is an optional dependent using table sharing. The entity does not have any property with a non-default value to identify whether the entity exists. This means that when it is queried no object instance will be created instead of an instance with all properties set to default values. Any nested dependents will also be lost. Either don't save any instance with only default values or mark the incoming navigation as required in the model.</value>
+    <comment>Warning RelationalEventId.OptionalDependentWithAllNullPropertiesWarning string string</comment>
+  </data>
   <data name="LogOptionalDependentWithoutIdentifyingProperty" xml:space="preserve">
     <value>The entity type '{entityType}' is an optional dependent using table sharing without any required non shared property that could be used to identify whether the entity exists. If all nullable properties contain a null value in database then an object instance won't be created in the query. Add a required property to create instances with null values for other properties or mark the incoming navigation as required to always create an instance.</value>
     <comment>Warning RelationalEventId.OptionalDependentWithoutIdentifyingPropertyWarning string</comment>
@@ -745,11 +762,11 @@
   <data name="TransactionAssociatedWithDifferentConnection" xml:space="preserve">
     <value>The specified transaction is not associated with the current connection. Only transactions associated with the current connection may be used.</value>
   </data>
+  <data name="TransactionSuppressedMigrationInUserTransaction" xml:space="preserve">
+    <value>User transaction is not supported with a TransactionSuppressed migrations.</value>
+  </data>
   <data name="UnableToBindMemberToEntityProjection" xml:space="preserve">
     <value>Unable to bind '{memberType}.{member}' to an entity projection of '{entityType}'.</value>
-  </data>
-  <data name="UnableToSplitCollectionProjectionInSplitQuery" xml:space="preserve">
-    <value>The query has been configured to use '{splitQueryEnumValue}', but contains a collection in the 'Select' call which could not be split into a separate query. Remove '{splitQueryMethodName}' if applied, or add '{singleQueryMethodName}' to the query.</value>
   </data>
   <data name="UnhandledExpressionInVisitor" xml:space="preserve">
     <value>Unhandled expression '{expression}' of type '{expressionType}' encountered in '{visitor}'.</value>

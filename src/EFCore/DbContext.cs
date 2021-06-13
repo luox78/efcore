@@ -438,6 +438,21 @@ namespace Microsoft.EntityFrameworkCore
         }
 
         /// <summary>
+        ///     Override this method to set defaults and configure conventions before they run. This method is invoked before
+        ///     <see cref="OnModelCreating"/>.
+        /// </summary>
+        /// <remarks>
+        ///     If a model is explicitly set on the options for this context (via <see cref="DbContextOptionsBuilder.UseModel(IModel)" />)
+        ///     then this method will not be run.
+        /// </remarks>
+        /// <param name="configurationBuilder">
+        ///     The builder being used to set defaults and configure conventions that will be used to build the model for this context.
+        /// </param>
+        protected internal virtual void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+        }
+
+        /// <summary>
         ///     Override this method to further configure the model that was discovered by convention from the entity types
         ///     exposed in <see cref="DbSet{TEntity}" /> properties on your derived context. The resulting model may be cached
         ///     and re-used for subsequent instances of your derived context.
@@ -723,11 +738,12 @@ namespace Microsoft.EntityFrameworkCore
                 Check.DebugAssert(
                     _configurationSnapshot.DeleteOrphansTiming.HasValue, "!configurationSnapshot.DeleteOrphansTiming.HasValue");
 
-                ChangeTracker.AutoDetectChangesEnabled = _configurationSnapshot.AutoDetectChangesEnabled.Value;
-                ChangeTracker.QueryTrackingBehavior = _configurationSnapshot.QueryTrackingBehavior.Value;
-                ChangeTracker.LazyLoadingEnabled = _configurationSnapshot.LazyLoadingEnabled.Value;
-                ChangeTracker.CascadeDeleteTiming = _configurationSnapshot.CascadeDeleteTiming.Value;
-                ChangeTracker.DeleteOrphansTiming = _configurationSnapshot.DeleteOrphansTiming.Value;
+                var changeTracker = ChangeTracker;
+                changeTracker.AutoDetectChangesEnabled = _configurationSnapshot.AutoDetectChangesEnabled.Value;
+                changeTracker.QueryTrackingBehavior = _configurationSnapshot.QueryTrackingBehavior.Value;
+                changeTracker.LazyLoadingEnabled = _configurationSnapshot.LazyLoadingEnabled.Value;
+                changeTracker.CascadeDeleteTiming = _configurationSnapshot.CascadeDeleteTiming.Value;
+                changeTracker.DeleteOrphansTiming = _configurationSnapshot.DeleteOrphansTiming.Value;
             }
             else
             {

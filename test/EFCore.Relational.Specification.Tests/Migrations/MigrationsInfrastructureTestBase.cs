@@ -5,9 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -307,7 +304,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
         protected virtual void DiffSnapshot(ModelSnapshot snapshot, DbContext context)
         {
             var sourceModel = context.GetService<IModelRuntimeInitializer>().Initialize(
-                ((IMutableModel)snapshot.Model).FinalizeModel(), designTime: true, validationLogger: null);
+                snapshot.Model, designTime: true, validationLogger: null);
 
             var modelDiffer = context.GetService<IMigrationsModelDiffer>();
             var operations = modelDiffer.GetDifferences(

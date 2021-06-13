@@ -12,7 +12,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
 {
     public class SqliteMigrationAnnotationProviderTest
     {
-        private readonly ModelBuilder _modelBuilder = SqliteTestHelpers.Instance.CreateConventionBuilder();
+        private readonly TestHelpers.TestModelBuilder _modelBuilder = SqliteTestHelpers.Instance.CreateConventionBuilder();
         private readonly SqliteAnnotationProvider _provider = new SqliteAnnotationProvider(new RelationalAnnotationProviderDependencies());
         private readonly Annotation _autoincrement = new(SqliteAnnotationNames.Autoincrement, true);
 
@@ -23,7 +23,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name && (bool)a.Value);
         }
 
@@ -35,7 +35,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.Contains(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name && (bool)a.Value);
         }
 
@@ -46,7 +46,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name);
         }
 
@@ -57,7 +57,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name);
         }
 
@@ -68,7 +68,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name);
         }
 
@@ -79,7 +79,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name);
         }
 
@@ -90,12 +90,12 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             FinalizeModel();
 
             Assert.DoesNotContain(
-                _provider.For(property.GetTableColumnMappings().Single().Column),
+                _provider.For(property.GetTableColumnMappings().Single().Column, true),
                 a => a.Name == _autoincrement.Name);
         }
 
         private IModel FinalizeModel()
-            => SqliteTestHelpers.Instance.Finalize(_modelBuilder);
+            => _modelBuilder.FinalizeModel();
 
         private class Entity
         {

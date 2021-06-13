@@ -5,14 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.EntityFrameworkCore.TestUtilities;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 #nullable enable
@@ -96,8 +95,8 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                     testIndexComparer);
             }
 
-            protected virtual TestModelBuilder CreateModelBuilder()
-                => CreateTestModelBuilder(InMemoryTestHelpers.Instance);
+            protected virtual TestModelBuilder CreateModelBuilder(Action<ModelConfigurationBuilder>? configure = null)
+                => CreateTestModelBuilder(InMemoryTestHelpers.Instance, configure);
 
             protected TestModelBuilder HobNobBuilder()
             {
@@ -109,12 +108,12 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 return builder;
             }
 
-            protected abstract TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers);
+            protected abstract TestModelBuilder CreateTestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure);
         }
 
         public abstract class TestModelBuilder
         {
-            protected TestModelBuilder(TestHelpers testHelpers)
+            protected TestModelBuilder(TestHelpers testHelpers, Action<ModelConfigurationBuilder>? configure)
             {
                 var options = new LoggingOptions();
                 options.Initialize(new DbContextOptionsBuilder().EnableSensitiveDataLogging(false).Options);
@@ -134,16 +133,16 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                     testHelpers.LoggingDefinitions,
                     new NullDbContextLogger());
 
-                ModelBuilder = testHelpers.CreateConventionBuilder(modelLogger, ValidationLogger);
-                TestHelpers = testHelpers;
+                ModelBuilder = testHelpers.CreateConventionBuilder(
+                    modelLogger,
+                    ValidationLogger,
+                    configure == null ? null : c => configure(c));
             }
-
-            protected virtual TestHelpers TestHelpers { get; }
 
             public virtual IMutableModel Model
                 => ModelBuilder.Model;
 
-            public ModelBuilder ModelBuilder { get; }
+            public TestHelpers.TestModelBuilder ModelBuilder { get; }
             public ListLoggerFactory ValidationLoggerFactory { get; }
             public ListLoggerFactory ModelLoggerFactory { get; }
             protected virtual DiagnosticsLogger<DbLoggerCategory.Model.Validation> ValidationLogger { get; }
@@ -172,13 +171,8 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public abstract TestModelBuilder Ignore<TEntity>()
                 where TEntity : class;
 
-            public virtual IModel FinalizeModel(bool designTime = false)
-            {
-                var serviceProvider = TestHelpers.CreateContextServices();
-                var modelRuntimeInitializer = serviceProvider.GetRequiredService<IModelRuntimeInitializer>();
-
-                return modelRuntimeInitializer.Initialize(ModelBuilder.FinalizeModel(), designTime, ValidationLogger);
-            }
+            public virtual IModel FinalizeModel()
+                => ModelBuilder.FinalizeModel(designTime: true);
 
             public virtual string GetDisplayName(Type entityType)
                 => entityType.Name;
@@ -385,6 +379,7 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public abstract TestPropertyBuilder<TProperty> HasAnnotation(string annotation, object? value);
             public abstract TestPropertyBuilder<TProperty> IsRequired(bool isRequired = true);
             public abstract TestPropertyBuilder<TProperty> HasMaxLength(int maxLength);
+            public abstract TestPropertyBuilder<TProperty> HasPrecision(int precision, int scale);
             public abstract TestPropertyBuilder<TProperty> IsUnicode(bool unicode = true);
             public abstract TestPropertyBuilder<TProperty> IsRowVersion();
             public abstract TestPropertyBuilder<TProperty> IsConcurrencyToken(bool isConcurrencyToken = true);
@@ -400,6 +395,11 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             public abstract TestPropertyBuilder<TProperty> HasValueGenerator(Type valueGeneratorType);
             public abstract TestPropertyBuilder<TProperty> HasValueGenerator(Func<IReadOnlyProperty, IReadOnlyEntityType, ValueGenerator> factory);
 
+            public abstract TestPropertyBuilder<TProperty> HasValueGeneratorFactory<TFactory>()
+                where TFactory : ValueGeneratorFactory;
+
+            public abstract TestPropertyBuilder<TProperty> HasValueGeneratorFactory(Type valueGeneratorFactoryType);
+
             public abstract TestPropertyBuilder<TProperty> HasField(string fieldName);
             public abstract TestPropertyBuilder<TProperty> UsePropertyAccessMode(PropertyAccessMode propertyAccessMode);
 
@@ -411,7 +411,13 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                 Expression<Func<TProvider, TProperty>> convertFromProviderExpression);
 
             public abstract TestPropertyBuilder<TProperty> HasConversion<TProvider>(ValueConverter<TProperty, TProvider> converter);
-            public abstract TestPropertyBuilder<TProperty> HasConversion(ValueConverter converter);
+            public abstract TestPropertyBuilder<TProperty> HasConversion(ValueConverter? converter);
+            public abstract TestPropertyBuilder<TProperty> HasConversion(ValueConverter? converter, ValueComparer? valueComparer);
+            public abstract TestPropertyBuilder<TProperty> HasConversion<TConverter, TComparer>()
+                where TConverter : ValueConverter
+                where TComparer : ValueComparer;
+
+            public abstract TestPropertyBuilder<TProperty> HasConversion(Type converterType, Type? comparerType);
         }
 
         public abstract class TestNavigationBuilder
